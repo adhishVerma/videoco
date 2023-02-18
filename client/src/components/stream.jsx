@@ -4,7 +4,7 @@ import ReactPlayer from "react-player";
 const Stream = () => {
   return (
     <div className="container w-screen h-screen lg:py-16 relative m-auto">
-      <div className="w-full h-full relative">
+      <div className="w-full h-full">
         <ReactPlayer
           className="absolute top-0 left-0 object-cover"
           width="100%"
@@ -15,9 +15,9 @@ const Stream = () => {
           playsinline
         />
       </div>
-      <div className="absolute z-10 bottom-24 right-6 border-2 rounded-xl h-[56vmin] w-[32vmin] lg:w-auto lg:max-h-44 overflow-hidden">
+      <div className="absolute z-10 bottom-24 right-6 border-2 rounded-xl h-[28vmin] w-[16vmin] lg:w-auto lg:max-h-44 overflow-hidden">
         <ReactPlayer
-        className="object-cover min-h-full min-w-full"
+        className="object-cover"
           height="100%"
           width="100%"
           url="https://www.youtube.com/watch?v=Nro6oFD3oHw"
