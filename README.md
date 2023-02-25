@@ -29,7 +29,7 @@ webRTC is a simple protocol to exchange data, between the browsers. As the brows
 
 For multiple devices to connect in a single call it's complex, but it's doable.
 
-webRTC can be used for audio streams, video streams, screen sharing. 
+webRTC can be used for audio streams, video streams, and screen sharing. 
 
 
 
