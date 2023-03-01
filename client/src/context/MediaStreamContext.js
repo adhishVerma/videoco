@@ -1,12 +1,12 @@
 import React, { createContext } from "react";
 import { useContext } from "react";
 
-export const MediaStreamContext = createContext(null);
+export const MediaStreamContext = createContext();
 
 export const useMedia = () => {return useContext(MediaStreamContext)}
 
 export const MediaStreamProvider = (props) => {
-  const [remoteStream, setRemoteStream] = React.useState(null)
+  const [remoteStream, setRemoteStream] = React.useState();
   const [localStream, setLocalStream] = React.useState(null);
 
   return (

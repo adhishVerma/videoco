@@ -1,17 +1,17 @@
 import "./App.css";
-import Footer from "./components/footer";
-import Navbar from "./components/navbar";
 import Stream from "./components/stream";
-import {MediaStreamProvider} from "./context/MediaStreamContext";
+import Connect from "./pages/Connect";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 
 function App() {
   return (
     <div className="App">
-      <MediaStreamProvider>
-        <Navbar />
-        <Stream />
-        <Footer />
-      </MediaStreamProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Connect />} />
+          <Route path="/room/:roomId" element={<Stream />} />
+        </Routes>
+      </BrowserRouter>
     </div>
   );
 }

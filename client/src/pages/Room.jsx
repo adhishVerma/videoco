@@ -1,6 +1,6 @@
 import React from 'react'
 
-const connect = () => {
+const Room = () => {
   return (
     <div>
       
@@ -8,4 +8,4 @@ const connect = () => {
   )
 }
 
-export default connect
+export default Room
