@@ -1,7 +1,7 @@
 import React from "react";
 import ReactPlayer from "react-player";
 
-const Stream = () => {
+const Stream = ({localStream, remoteStream}) => {
   
   return (
     <div className="container w-screen h-screen lg:py-16 relative m-auto">
@@ -21,7 +21,7 @@ const Stream = () => {
         className="object-cover"
           height="100%"
           width="100%"
-          url="https://www.youtube.com/watch?v=sFbEOdylxOY"
+          url={localStream}
           muted
           loop
           playing
