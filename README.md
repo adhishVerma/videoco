@@ -25,11 +25,12 @@ You don't have to include this section but interviewers *love* that you can not 
 
 ## Lessons Learned:
 
-webRTC is a simple protocol to exchange data, between the browsers. As the browsers are on every device and there's native interface available for accessing the media devices it can be widely used.We don't need to worry about how to access these devices, if there is proper browser support we can use this on every device. 
+webRTC is a simple protocol to exchange data, between the browsers. As the browsers are on every device and there's native interface available for accessing the media devices it can be widely used.We don't need to worry about how to access these devices, if there is proper browser support we can use this on every device.
+It can be used for audio streams, video streams, and screen sharing.  
 
-For multiple devices to connect in a single call it's complex, but it's doable.
+For multiple devices to connect in a single call it's complex, but it's achievable.
 
-webRTC can be used for audio streams, video streams, and screen sharing. 
+
 
 
 
