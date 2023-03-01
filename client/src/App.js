@@ -1,5 +1,5 @@
 import "./App.css";
-import Stream from "./components/stream";
+import Room from "./pages/Room";
 import Connect from "./pages/Connect";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
@@ -9,7 +9,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Connect />} />
-          <Route path="/room/:roomId" element={<Stream />} />
+          <Route path="/room/:roomId" element={<Room />} />
         </Routes>
       </BrowserRouter>
     </div>

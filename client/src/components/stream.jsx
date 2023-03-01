@@ -10,7 +10,7 @@ const Stream = () => {
           className="absolute top-0 left-0 right-0 bottom-0 object-cover"
           width="100%"
           height="100%"
-          url="https://www.youtube.com/watch?v=Nro6oFD3oHw"
+          url="https://www.youtube.com/watch?v=sFbEOdylxOY"
           loop
           playing
           playsinline
@@ -21,7 +21,7 @@ const Stream = () => {
         className="object-cover"
           height="100%"
           width="100%"
-          url="https://www.youtube.com/watch?v=Nro6oFD3oHw"
+          url="https://www.youtube.com/watch?v=sFbEOdylxOY"
           muted
           loop
           playing
