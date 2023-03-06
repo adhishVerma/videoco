@@ -133,13 +133,13 @@ const Room = () => {
     handleRemoteTracks,
   ]);
 
-  if (!remoteStream) {
-    return(
-      <div className="flex w-screen h-screen items-center justify-center">
-        <Waiting/>
-      </div>
-    )
-  }
+  // if (!remoteStream) {
+  //   return(
+  //     <div className="flex w-screen h-screen items-center justify-center">
+  //       <Waiting/>
+  //     </div>
+  //   )
+  // }
 
   return (
     <div>

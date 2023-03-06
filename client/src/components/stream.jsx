@@ -13,6 +13,7 @@ const Stream = ({localStream, remoteStream}) => {
           playing
           playsinline
         />
+        <div className="text-white absolute bottom-0 left-0 bg-slate-800 p-5 rounded-sm text-2xl">Name</div>
       </div>
       <div className="absolute right-[-75px] bottom-[-20px] scale-50 border-2 rounded-2xl overflow-hidden max-w-sm lg:max-w-xl">
         <ReactPlayer
@@ -23,6 +24,7 @@ const Stream = ({localStream, remoteStream}) => {
           playing
           playsinline
         />
+        <div className="text-white absolute bottom-0 left-0 bg-slate-800 p-5 rounded-sm text-2xl">Name</div>
       </div>
     </div>
   );

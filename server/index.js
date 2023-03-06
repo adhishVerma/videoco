@@ -6,6 +6,7 @@ const app = express()
 const server = http.createServer(app);
 const io = new Server(server, { cors : true });
 
+const emailToSocket = new Map();
 
 // when client connects
 io.on('connection', socket => {
@@ -14,7 +15,6 @@ io.on('connection', socket => {
   // when socket wants to join a room
   socket.on('join-room', (data) => {
     const { emailId, roomId } = data;
- 
     // socket is moved to roomId
     socket.join(roomId);
     socket.emit('joined-room', { roomId })

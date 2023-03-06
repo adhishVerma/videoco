@@ -8,9 +8,11 @@ export const useMedia = () => {return useContext(MediaStreamContext)}
 export const MediaStreamProvider = (props) => {
   const [remoteStream, setRemoteStream] = React.useState();
   const [localStream, setLocalStream] = React.useState(null);
+  const [mute, setMute] = React.useState(false)
+  const [micOpen,setMicOpen] = React.useState(true)
 
   return (
-    <MediaStreamContext.Provider value={{remoteStream,setRemoteStream, localStream, setLocalStream}}>
+    <MediaStreamContext.Provider value={{remoteStream,setRemoteStream, localStream, setLocalStream, mute, setMute}}>
       {props.children}
     </MediaStreamContext.Provider>
   )
