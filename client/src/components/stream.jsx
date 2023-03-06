@@ -14,7 +14,7 @@ const Stream = ({localStream, remoteStream}) => {
           playsinline
         />
       </div>
-      <div className="absolute right-[-75px] bottom-[-20px] scale-50 border-2 rounded-2xl overflow-hidden max-w-sm lg:max-w-xl max-h-xl">
+      <div className="absolute right-[-75px] bottom-[-20px] scale-50 border-2 rounded-2xl overflow-hidden max-w-sm lg:max-w-xl">
         <ReactPlayer
           height="100%"
           width="100%"
