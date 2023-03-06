@@ -5,6 +5,7 @@ import { useSocket } from "../context/SocketContext";
 import { usePeer } from "../context/PeerContext";
 import { useCallback } from "react";
 import { useMedia } from "../context/MediaStreamContext";
+import Waiting from "../components/waiting";
 
 const Room = () => {
   let { roomId } = useParams();
@@ -131,6 +132,14 @@ const Room = () => {
     handleNewIceCandidateMsg,
     handleRemoteTracks,
   ]);
+
+  if (!remoteStream) {
+    return(
+      <div className="flex w-screen h-screen items-center justify-center">
+        <Waiting/>
+      </div>
+    )
+  }
 
   return (
     <div>
