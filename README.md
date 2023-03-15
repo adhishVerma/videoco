@@ -32,7 +32,5 @@ For multiple devices to connect in a single call it's complex, but it's achievab
 
 ## Screenshots:
 
-![image](https://ibb.co/3zBkg3s "login screen")
-
-
+![image](https://i.ibb.co/6BgNjMZ/videoco0.png "login screen")
 
