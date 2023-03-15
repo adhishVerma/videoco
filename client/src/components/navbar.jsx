@@ -6,7 +6,7 @@ const Navbar = () => {
   const {remoteStream} = useMedia();
 
   return (
-    <div className="z-10 fixed top-0 left-0 right-0 h-14">
+    <div className="z-10 fixed top-0 left-0 right-0 flex items-center py-3 bg-gray-800">
       <nav className="flex justify-between py-2 px-2 lg:px-0 container m-auto">
         <div className="flex items-center text-lg">
           <img src="/videoco.png" alt="logo" className="max-h-6"/>

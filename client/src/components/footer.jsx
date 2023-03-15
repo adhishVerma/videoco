@@ -10,15 +10,15 @@ const Footer = () => {
   return (
     <div>
       {<div className="controls">
-        <div className="fixed bg-transparent bottom-0 left-0 right-0 flex justify-center gap-3 py-5 text-2xl z-10">
-          <div className="bg-[#00000071] p-3 rounded-full opacity-50 hover:opacity-100 hover:scale-110">
+        <div className="fixed bg-gray-800 bottom-0 left-0 right-0 flex justify-center gap-3 py-4 text-2xl z-10">
+          <button className="bg-[#00000071] p-3 rounded-full opacity-50 hover:opacity-100 hover:scale-110">
             <IoVideocam />
-          </div>
-          <div className="bg-[#00000071] p-3  rounded-full opacity-50 hover:opacity-100 hover:scale-110">
+          </button>
+          <button className="bg-[#00000071] p-3  rounded-full opacity-50 hover:opacity-100 hover:scale-110">
             <FaMicrophone />
-          </div>
+          </button>
           <button className="bg-[#00000071] p-3  rounded-full opacity-50 hover:opacity-100 hover:scale-110" onClick={()=>{setMute(!mute)}}>
-            {!mute ? <BsFillVolumeMuteFill /> : <BsFillVolumeUpFill/>}
+            {mute ? <BsFillVolumeMuteFill /> : <BsFillVolumeUpFill/>}
           </button>
         </div>
       </div>}

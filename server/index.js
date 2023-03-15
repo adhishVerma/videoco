@@ -11,10 +11,16 @@ const emailToSocket = new Map();
 // when client connects
 io.on('connection', socket => {
   console.log('user connected', socket.id)
+  // when user logs in
+  socket.on('login', (data) => {
+    const {email} = data
+    emailToSocket.set(email, socket.id)
+  })
 
   // when socket wants to join a room
   socket.on('join-room', (data) => {
     const { emailId, roomId } = data;
+    
     // socket is moved to roomId
     socket.join(roomId);
     socket.emit('joined-room', { roomId })

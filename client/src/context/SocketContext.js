@@ -15,9 +15,9 @@ const socket = io('http://localhost:5000');
 
 // setting up socket provider
 export const SocketProvider = (props) => {
-  
+  const [userEmail, setUserEmail] = React.useState("");
   const [roomId, setRoomId] = React.useState("");
   return (
-    <SocketContext.Provider value={{socket, roomId, setRoomId}}>{props.children}</SocketContext.Provider>
+    <SocketContext.Provider value={{socket, roomId, setRoomId, userEmail, setUserEmail}}>{props.children}</SocketContext.Provider>
   );
 };

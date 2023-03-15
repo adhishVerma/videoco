@@ -1,7 +1,11 @@
 import React from "react";
 import ReactPlayer from "react-player";
+import { useMedia } from "../context/MediaStreamContext";
+
 
 const Stream = ({localStream, remoteStream}) => {
+  
+  const {mute} = useMedia()
   
   return (
     <div className="container flex w-screen h-screen lg:py-16 relative m-auto">
@@ -12,8 +16,9 @@ const Stream = ({localStream, remoteStream}) => {
           url={localStream}
           playing
           playsinline
+          muted={mute}
         />
-        <div className="text-white absolute bottom-0 left-0 bg-slate-800 p-5 rounded-sm text-2xl">Name</div>
+        <div className="text-white absolute bottom-0 left-0 bg-slate-800 p-5 rounded-sm text-2xl hidden lg:block">Name</div>
       </div>
       <div className="absolute right-[-75px] bottom-[-20px] scale-50 border-2 rounded-2xl overflow-hidden max-w-sm lg:max-w-xl">
         <ReactPlayer
@@ -24,7 +29,7 @@ const Stream = ({localStream, remoteStream}) => {
           playing
           playsinline
         />
-        <div className="text-white absolute bottom-0 left-0 bg-slate-800 p-5 rounded-sm text-2xl">Name</div>
+        <div className="text-white absolute bottom-0 left-0 bg-slate-800 p-5 rounded-sm text-2xl hidden lg:block">Name</div>
       </div>
     </div>
   );
