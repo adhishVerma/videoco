@@ -32,5 +32,16 @@ For multiple devices to connect in a single call it's complex, but it's achievab
 
 ## Screenshots:
 
+-login screen
 ![image](https://i.ibb.co/6BgNjMZ/videoco0.png "login screen")
+
+-incoming call
+[image](https://i.ibb.co/R0SM8bs/videoco1.png "incoming call")
+
+-invite someone
+[image](https://i.ibb.co/gRh1VM3/videoco2.png "invite someone in call")
+
+-Active call
+[image](https://i.ibb.co/J3kW9ZH/videoco3.png "active call")
+
 
