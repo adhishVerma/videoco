@@ -13,7 +13,7 @@ const Stream = ({localStream, remoteStream}) => {
         <ReactPlayer
           width="100%"
           height="100%"
-          url={localStream}
+          url={remoteStream}
           playing
           playsinline
           muted={mute}

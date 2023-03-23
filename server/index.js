@@ -14,17 +14,29 @@ io.on('connection', socket => {
   // when user logs in
   socket.on('login', (data) => {
     const {email} = data
-    emailToSocket.set(email, socket.id)
+    emailToSocket.set(email, socket)
   })
 
   // when socket wants to join a room
   socket.on('join-room', (data) => {
-    const { emailId, roomId } = data;
+    const { emailId, roomId, userEmail } = data;
     
     // socket is moved to roomId
     socket.join(roomId);
     socket.emit('joined-room', { roomId })
-    console.log('User : ', emailId, ' to room :', roomId )
+    socket.broadcast.to(roomId).emit('user-joined', { emailId });
+
+    // asking another user to move to the same room
+    const guestSocket = emailToSocket.get(emailId)
+    if (guestSocket){
+        guestSocket.emit('incoming-call', {roomId, from : userEmail})
+    }
+  })
+
+  socket.on('pick-call', (data) => {
+    const {roomId, emailId} = data;
+    socket.join(roomId);
+    socket.emit('joined-room', { roomId })
     socket.broadcast.to(roomId).emit('user-joined', { emailId });
   })
 
