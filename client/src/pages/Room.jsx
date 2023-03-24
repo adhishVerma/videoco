@@ -11,7 +11,7 @@ const Room = () => {
   let { roomId } = useParams();
   let { peer, addStream, createOffer, createAnswer } = usePeer();
   const { socket } = useSocket();
-  const { remoteStream, setRemoteStream, localStream, setLocalStream } =
+  const { remoteStream, setRemoteStream, localStream, setLocalStream} =
     useMedia();
 
   // function to get the camera and mic
@@ -133,13 +133,13 @@ const Room = () => {
     handleRemoteTracks,
   ]);
 
-  // if (!remoteStream) {
-  //   return(
-  //     <div className="flex w-screen h-screen items-center justify-center">
-  //       <Waiting/>
-  //     </div>
-  //   )
-  // }
+  if (!remoteStream) {
+    return(
+      <div className="flex w-screen h-screen items-center justify-center">
+        <Waiting/>
+      </div>
+    )
+  }
 
   return (
     <div>

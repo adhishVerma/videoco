@@ -27,10 +27,10 @@ const Login = () => {
           type="email"
           placeholder="email"
           value={email}
-          className="outline-none border-0 py-3 rounded-md px-5 text-lg text-gray-600"
+          className="outline-none border-0 py-3 rounded-md px-5 text-lg text-gray-700"
           onChange={(e) => {setEmail(e.target.value)}}
         />
-        <button className="bg-white hover:bg-gray-300 active:bg-gray-400 text-black rounded-2xl px-8 py-2 w-1/2 self-center" onClick={handleLogin}>
+        <button className="bg-white hover:bg-gray-200 active:bg-gray-400 text-black rounded-2xl px-8 py-2 w-1/2 self-center" onClick={handleLogin}>
           Login
         </button>
       </div>

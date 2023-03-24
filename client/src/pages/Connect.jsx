@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import Callrequest from "../components/callrequest";
 
 const Connect = () => {
-  const {socket, setRoomId, userEmail} = useContext(SocketContext);
+  const {socket, setRoomId, userEmail, setGuestEmail} = useContext(SocketContext);
   const [emailId, setEmailId] = useState("");
   const navigate = useNavigate();
   const [incomingCall, setIncomingCall] = useState({
@@ -21,7 +21,8 @@ const Connect = () => {
   const handleIncomingCall = useCallback(({from, roomId}) => {
     setIncomingCall({from, roomId});
     setShowCallRequest(true);
-  },[setIncomingCall, setShowCallRequest])
+    setGuestEmail(from);
+  },[setIncomingCall, setShowCallRequest, setGuestEmail])
 
   useEffect(() => {
     socket.on("joined-room", handleRoomJoined)
@@ -36,6 +37,7 @@ const Connect = () => {
     const room = uuidv4();
     setRoomId(room);
     socket.emit("join-room", {emailId, roomId: room, userEmail});
+    setGuestEmail(emailId)
   }
 
   const pickCall = () => {
@@ -52,8 +54,8 @@ const Connect = () => {
     <div className="flex flex-col gap-10 h-screen items-center justify-center">
       <div className="text-3xl">Call User</div>
       <div className="flex flex-col gap-10">
-        <input type="email" placeholder="email" value={emailId} className="outline-none border-0 py-3 rounded-md px-5 text-lg text-gray-600" onChange={(e) => {setEmailId(e.target.value)}}/>
-        <button className="bg-white hover:bg-gray-300 active:bg-gray-400 text-black rounded-2xl px-8 py-2 w-1/2 self-center" onClick={handleJoinRoom}>Invite</button>
+        <input type="email" placeholder="email" value={emailId} className="py-3 rounded-md px-5 text-lg text-gray-700 outline-none" onChange={(e) => {setEmailId(e.target.value)}}/>
+        <button className="bg-white hover:bg-gray-200 active:bg-gray-400 text-black rounded-2xl px-8 py-2 w-1/2 self-center" onClick={handleJoinRoom}>Invite</button>
       </div>
       {showCallRequest && <Callrequest pickCall={pickCall} declineCall={declineCall} incomingCall={incomingCall}/>}
     </div>

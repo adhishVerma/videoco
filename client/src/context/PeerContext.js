@@ -10,6 +10,8 @@ export const usePeer = () => {
 
 // setting up peer provider
 export const PeerProvider = (props) => {
+
+
   const config = {
     iceServers: [
       { url: "stun:stun.sipgate.net:3478" },
@@ -20,8 +22,20 @@ export const PeerProvider = (props) => {
   const peer = new RTCPeerConnection(config)
 
   const addStream = async (stream) => {
-    stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+    stream.getTracks().forEach((track) =>
+    {
+    peer.addTrack(track, stream)
+    });
   } 
+
+  const toggleAudioTrack = (stream, value) => {
+    stream.getAudioTracks()[0].enabled = value
+  }
+
+  const toggleVideoTrack = (stream,value) => {
+    console.log(stream.getVideoTracks()[0], value)
+    stream.getVideoTracks()[0].enabled= value
+  }
 
   const createOffer = async () => {
     const offer = await peer.createOffer();
@@ -38,7 +52,7 @@ export const PeerProvider = (props) => {
 
   return (
     <PeerContext.Provider
-      value={{ config, peer, addStream, createOffer , createAnswer}}
+      value={{ config, peer, addStream, createOffer , createAnswer, toggleVideoTrack, toggleAudioTrack}}
     >
       {props.children}
     </PeerContext.Provider>
