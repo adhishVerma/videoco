@@ -15,7 +15,7 @@ export const PeerProvider = (props) => {
   const config = {
     iceServers: [
         {
-          urls: "stun:global.stun.twilio.com:3478?transport=udp",
+          urls: "stun:global.stun.twilio.com:3478",
         }
     ],
   }
