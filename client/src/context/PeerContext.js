@@ -15,23 +15,10 @@ export const PeerProvider = (props) => {
   const config = {
     iceServers: [
         {
-          urls: "stun:relay.metered.ca:80",
-        },
-        {
           urls: "turn:relay.metered.ca:80",
           username: "3ce73cc86cfa5b95cfc36c02",
           credential: "ngM+3a+7bu080oIZ",
-        },
-        {
-          urls: "turn:relay.metered.ca:443",
-          username: "3ce73cc86cfa5b95cfc36c02",
-          credential: "ngM+3a+7bu080oIZ",
-        },
-        {
-          urls: "turn:relay.metered.ca:443?transport=tcp",
-          username: "3ce73cc86cfa5b95cfc36c02",
-          credential: "ngM+3a+7bu080oIZ",
-        },
+        }
     ],
   }
 
