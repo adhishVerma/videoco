@@ -15,9 +15,7 @@ export const PeerProvider = (props) => {
   const config = {
     iceServers: [
         {
-          urls: "turn:relay.metered.ca:80",
-          username: "3ce73cc86cfa5b95cfc36c02",
-          credential: "ngM+3a+7bu080oIZ",
+          urls: "stun:global.stun.twilio.com:3478?transport=udp",
         }
     ],
   }
