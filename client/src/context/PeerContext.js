@@ -1,4 +1,5 @@
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import axios from "axios";
 
 // using context api we create a context
 export const PeerContext = createContext();
@@ -10,15 +11,17 @@ export const usePeer = () => {
 
 // setting up peer provider
 export const PeerProvider = (props) => {
+    const [iceServers, setIceServers] = useState([])
 
-
-  const config = {
-    iceServers: [
-        {
-          urls: "stun:global.stun.twilio.com:3478",
+    useEffect(() => {
+        const getIce = async() => {
+            const iceservers = await axios.get("https://videoco-express.onrender.com/ice")
+            setIceServers(iceservers.data)
         }
-    ],
-  }
+        getIce()
+    }, [setIceServers])
+
+  const config = { iceServers : iceServers  }
 
   const peer = new RTCPeerConnection(config)
 
