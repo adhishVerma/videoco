@@ -1,4 +1,4 @@
-import twilio from 'twilio'
+const twilio = require('twilio')
 
 const getIce = (req,res) => {
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
