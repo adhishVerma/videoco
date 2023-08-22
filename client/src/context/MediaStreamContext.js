@@ -9,10 +9,17 @@ export const useMedia = () => {
 
 export const MediaStreamProvider = (props) => {
   const [remoteStream, setRemoteStream] = React.useState();
-  const [localStream, setLocalStream] = React.useState(null);
+  const [localStream, setLocalStream] = React.useState();
   const [mute, setMute] = React.useState(false);
-  const [micOpen, setMicOpen] = React.useState(true);
-  const [videoOpen, setVideoOpen] = React.useState(true);
+  const [micOpen, setMicOpen] = React.useState(false);
+  const [videoOpen, setVideoOpen] = React.useState(false);
+
+  const closeStream = () => {
+    localStream.getTracks().forEach((track) => {
+      track.stop();
+    })
+    setRemoteStream(null);
+  }
 
   return (
     <MediaStreamContext.Provider
@@ -24,7 +31,8 @@ export const MediaStreamProvider = (props) => {
         mute,
         setMute,
         videoOpen, setVideoOpen,
-        micOpen, setMicOpen
+        micOpen, setMicOpen,
+        closeStream
       }}
     >
       {props.children}

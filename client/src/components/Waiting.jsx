@@ -1,9 +1,10 @@
 import React from 'react'
+import Spinner from './Spinner'
 
 const Waiting = () => {
   return (
-    <div className='text-white'>
-      Calling user
+    <div>
+      <Spinner />
     </div>
   )
 }

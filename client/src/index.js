@@ -6,18 +6,19 @@ import { SocketProvider } from "./context/SocketContext";
 import { PeerProvider } from "./context/PeerContext";
 import Layout from "./components/Layout";
 import { MediaStreamProvider } from "./context/MediaStreamContext";
+import { BrowserRouter } from "react-router-dom";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
-  <React.StrictMode>
-    <SocketProvider>
-      <PeerProvider>
-        <MediaStreamProvider>
+  <SocketProvider>
+    <PeerProvider>
+      <MediaStreamProvider>
+        <BrowserRouter>
           <Layout>
             <App />
           </Layout>
-        </MediaStreamProvider>
-      </PeerProvider>
-    </SocketProvider>
-  </React.StrictMode>
+        </BrowserRouter>
+      </MediaStreamProvider>
+    </PeerProvider>
+  </SocketProvider>
 );

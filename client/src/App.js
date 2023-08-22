@@ -1,20 +1,18 @@
 import "./App.css";
 import Room from "./pages/Room";
 import Connect from "./pages/Connect";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import Login from "./components/login";
+import {  Route, Routes } from "react-router-dom";
+import Login from "./components/Login";
 
 function App() {
   return (
-    <div className="App">
-      <BrowserRouter>
+      <div className="App">
         <Routes>
-          <Route path="/login" element={<Login/>}/>
+          <Route path="/login" element={<Login />} />
           <Route path="/" element={<Connect />} />
           <Route path="/room/:roomId" element={<Room />} />
         </Routes>
-      </BrowserRouter>
-    </div>
+      </div>
   );
 }
 

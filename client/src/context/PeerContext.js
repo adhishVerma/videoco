@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import axios from "axios";
 
 // using context api we create a context
@@ -11,24 +11,25 @@ export const usePeer = () => {
 
 // setting up peer provider
 export const PeerProvider = (props) => {
-    const [iceServers, setIceServers] = useState([])
-
+    const [iceServers, setIceServers] = useState([]);
+    const [dataChannel, setDataChannel] = useState();
+    
     useEffect(() => {
-        const getIce = async() => {
-            const iceservers = await axios.get("https://videoco-express.onrender.com/ice")
-            setIceServers(iceservers.data)
-        }
-        getIce()
+      const getIce = async() => {
+        const iceservers = await axios.get("https://videoco-express.onrender.com/ice")
+        setIceServers(iceservers.data.slice(0,2))
+      }
+      getIce()
     }, [setIceServers])
+    
+    const config = { iceServers : iceServers  }
 
-  const config = { iceServers : iceServers  }
-
-  const peer = new RTCPeerConnection(config)
-
+    const peer = useRef(new RTCPeerConnection(config));
+    
   const addStream = async (stream) => {
     stream.getTracks().forEach((track) =>
     {
-    peer.addTrack(track, stream)
+    peer.current.addTrack(track, stream)
     });
   } 
 
@@ -37,26 +38,35 @@ export const PeerProvider = (props) => {
   }
 
   const toggleVideoTrack = (stream,value) => {
-    console.log(stream.getVideoTracks()[0], value)
     stream.getVideoTracks()[0].enabled= value
   }
 
   const createOffer = async () => {
-    const offer = await peer.createOffer();
-    await peer.setLocalDescription(offer);
+    const channel = peer.current.createDataChannel("file-transfer", {
+      maxPacketLifeTime : 6000
+    });
+    setDataChannel(channel);
+    const offer = await peer.current.createOffer();
+    await peer.current.setLocalDescription(offer);
     return offer
   }
 
   const createAnswer = async (offer) => {
-    await peer.setRemoteDescription(offer)
-    const answer = await peer.createAnswer();
-    await peer.setLocalDescription(answer);
+    await peer.current.setRemoteDescription(offer);
+    const answer = await peer.current.createAnswer();
+    await peer.current.setLocalDescription(new RTCSessionDescription(answer));
     return answer
   }
 
+  const setRemoteDescription = async(ans) => {
+    await peer.current.setRemoteDescription(new RTCSessionDescription(ans));
+  }
+
+
+
   return (
     <PeerContext.Provider
-      value={{ config, peer, addStream, createOffer , createAnswer, toggleVideoTrack, toggleAudioTrack}}
+      value={{ peer : peer.current, addStream, createOffer , createAnswer, toggleVideoTrack, toggleAudioTrack, setRemoteDescription, dataChannel, setDataChannel}}
     >
       {props.children}
     </PeerContext.Provider>

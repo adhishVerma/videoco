@@ -2,11 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
 
 body {
   margin: 0;
-  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -17,38 +17,49 @@ html {
   scroll-behavior: smooth;
 }
 
-*{
+* {
   box-sizing: border-box;
 }
 
 body {
-  background-color: #343541;
+  background: #131313;
+  /* background: rgb(1, 68, 94); */
+  /* background: -moz-linear-gradient(90deg, rgba(1, 68, 94, 1) 0%, rgba(1, 37, 61, 1) 51%, rgba(0, 5, 25, 1) 100%);
+  background: -webkit-linear-gradient(90deg, rgba(1, 68, 94, 1) 0%, rgba(1, 37, 61, 1) 51%, rgba(0, 5, 25, 1) 100%);
+  background: linear-gradient(90deg, rgba(1, 68, 94, 1) 0%, rgba(1, 37, 61, 1) 51%, rgba(0, 5, 25, 1) 100%);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#01445e", endColorstr="#000519", GradientType=1); */
   color: #f9f9f9;
   margin: 0;
   padding: 0;
 }
 
 a {
-  color : #f9f9f9;
+  /* color: #f9f9f9; */
   text-decoration: none;
 }
 
-@media only screen and(min-width: 768px){
-  body{
+@media only screen and(min-width: 768px) {
+  body {
     font-size: 16px;
   }
 }
-@media only screen and (min-width: 480px) and ( max-width: 768px) {
+
+@media only screen and (min-width: 480px) and (max-width: 768px) {
   body {
     font-size: 15px;
   }
 }
-@media only screen and(max-width: 479px){
-  body{
+
+@media only screen and(max-width: 479px) {
+  body {
     font-size: 14px;
   }
 }
 
-video{
+video {
   object-fit: cover;
+}
+
+::-webkit-scrollbar {
+  display: none;
 }
