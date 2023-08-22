@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState, useMemo } from 'react'
 import { FiUpload } from "react-icons/fi";
 import { usePeer } from '../../context/PeerContext';
 import { File } from './File';
@@ -8,7 +8,7 @@ export const Attachment = () => {
     const { peer, dataChannel, setDataChannel } = usePeer(); // For dataChannel
     const CHUNK_SIZE = 16 * 1024;
     const [file, setFile] = useState();
-    const fileChunks = [];
+    let fileChunks = useMemo(() => [], []);
 
     const handleFileSelect = (e) => {
         createDataChannel();
@@ -32,10 +32,10 @@ export const Attachment = () => {
         setFile("");
     }
 
-    const handleRemoteDataChannel = (e) => {
+    const handleRemoteDataChannel = useCallback((e) => {
         const channel = e.channel;
         setDataChannel(channel);
-    };
+    }, [setDataChannel]);
 
     const readFile = (file) => {
         const reader = new FileReader();
@@ -58,6 +58,7 @@ export const Attachment = () => {
         reader.readAsArrayBuffer(file);
     }
 
+
     const handleMessage = useCallback((e) => {
         let message = e.data;
         try {
@@ -73,7 +74,7 @@ export const Attachment = () => {
             console.log(err);
         }
         fileChunks.push(e.data);
-    }, []);
+    }, [fileChunks, setDataChannel, dataChannel]);
 
     useEffect(() => {
         peer.addEventListener('datachannel', handleRemoteDataChannel);
