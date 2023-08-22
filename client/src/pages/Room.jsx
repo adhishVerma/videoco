@@ -1,71 +1,108 @@
 import { useEffect } from "react";
-import Stream from "../components/stream";
+import Stream from "../components/Stream";
 import { useParams } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import { usePeer } from "../context/PeerContext";
 import { useCallback } from "react";
 import { useMedia } from "../context/MediaStreamContext";
-import Waiting from "../components/waiting";
+import Waiting from "../components/Waiting";
+import { Chat } from "../components/Chat";
 
 const Room = () => {
   let { roomId } = useParams();
-  let { peer, addStream, createOffer, createAnswer } = usePeer();
+  let { peer, addStream, createOffer, createAnswer, setRemoteDescription } = usePeer();
   const { socket } = useSocket();
-  const { remoteStream, setRemoteStream, localStream, setLocalStream} =
+  const { remoteStream, setRemoteStream, localStream, setLocalStream } =
     useMedia();
-
-  // function to get the camera and mic
-  const getUserMediaStream = useCallback(async () => {
-    const localStream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true,
-    });
-    setLocalStream(localStream);
-    addStream(localStream);
-  }, [setLocalStream, addStream]);
 
   // when a second user enters the room a call is initiated
   const handleCreateCall = useCallback(async () => {
-    console.log("call-initiated");
-    const offer = await createOffer();
-    socket.emit("video-offer", { roomId, offer });
-  }, [socket, createOffer, roomId]);
+    if (peer.connectionState === "connected") {
+      return
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: true
+    });
+    addStream(stream);
+    try{
+      const offer = await createOffer();
+      socket.emit("video-offer", { roomId, offer });
+    }catch(err){
+      console.log(err);
+    }
+    setLocalStream(stream);
+
+  }, [socket, createOffer, roomId, peer.connectionState, setLocalStream, addStream]);
 
   // when negotiation needed is triggered
   const handleNegotiationNeededEvent = useCallback(async () => {
-    console.log("negotiation-initiated");
-    const offer = await createOffer();
-    socket.emit("video-offer", { roomId, offer });
+    try{
+      const offer = await createOffer();
+      socket.emit("nego-offer", { roomId, offer });
+    }catch(err){
+      console.log(err);
+    }
+
   }, [socket, roomId, createOffer]);
+
+  const handleNegotiationNeededOffer = useCallback(async (data) => {
+    const { offer } = data;
+    try{
+      const answer = await createAnswer(offer);
+      socket.emit("nego-answer", { roomId, answer });
+    }catch(err){
+      console.log(err);
+    }
+
+  },[createAnswer, roomId, socket])
+
+  const handleNegotiationNeededFinal = useCallback(async (data) => {
+    const {ans} = data;
+    try{
+      await setRemoteDescription(ans);
+    }catch(err){
+      console.log(err);
+    }
+  }, [setRemoteDescription])
 
   // when the client recieves a video-offer
   const handleVideoOfferMsg = useCallback(
     async (data) => {
-      console.log("video-offer-received");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: true
+      })
+      addStream(stream);
       const { offer } = data;
-      const remoteSDP = new RTCSessionDescription(offer);
-      const answer = await createAnswer(remoteSDP);
-      socket.emit("video-answer", { roomId, answer });
+      try{
+        const answer = await createAnswer(offer);
+        socket.emit("video-answer", { roomId, answer });
+      }catch(err){
+        console.log(err);
+      }
+      setLocalStream(stream);
     },
-    [socket, createAnswer, roomId]
+    [socket, createAnswer, roomId, setLocalStream, addStream]
   );
 
   // when an answer arrives for video-offer
   const handleVideoAnswerMsg = useCallback(
     async (data) => {
-      console.log("video-answer-received");
       const { answer } = data;
-      const remoteSDP = new RTCSessionDescription(answer);
-      await peer.setRemoteDescription(remoteSDP);
+      try{
+        await setRemoteDescription(answer);
+      }catch(err){
+        console.log(err);
+      }
     },
-    [peer]
+    [setRemoteDescription]
   );
 
   // gathering ice candidates
   const handleICECandidateEvent = useCallback(
     async (e) => {
       if (e.candidate) {
-        console.log("found new candidate");
         socket.emit("new-ice-candidate", { roomId, candidate: e.candidate });
       }
     },
@@ -85,17 +122,11 @@ const Room = () => {
   const handleRemoteTracks = useCallback(
     async (e) => {
       const stream = e.streams[0];
-      setRemoteStream(stream);
+      setRemoteStream(stream);    
     },
     [setRemoteStream]
   );
 
-  // getting user media stream and adding it to peer
-  useEffect(() => {
-    if (!localStream) {
-      getUserMediaStream();
-    }
-  }, [getUserMediaStream, localStream]);
 
   // initializing various listeners
   useEffect(() => {
@@ -103,6 +134,8 @@ const Room = () => {
     socket.on("video-offer", handleVideoOfferMsg);
     socket.on("video-answer", handleVideoAnswerMsg);
     socket.on("new-ice-candidate", handleNewIceCandidateMsg);
+    socket.on('nego-offer', handleNegotiationNeededOffer);
+    socket.on('nego-final', handleNegotiationNeededFinal);
 
     peer.addEventListener("negotiationneeded", handleNegotiationNeededEvent);
     peer.addEventListener("icecandidate", handleICECandidateEvent);
@@ -113,11 +146,10 @@ const Room = () => {
       socket.off("video-offer", handleVideoOfferMsg);
       socket.off("video-answer", handleVideoAnswerMsg);
       socket.off("new-ice-candidate", handleNewIceCandidateMsg);
+      socket.off('nego-offer', handleNegotiationNeededOffer);
+      socket.off('nego-final', handleNegotiationNeededFinal);
 
-      peer.removeEventListener(
-        "negotiationneeded",
-        handleNegotiationNeededEvent
-      );
+      peer.removeEventListener("negotiationneeded",handleNegotiationNeededEvent);
       peer.removeEventListener("icecandidate", handleICECandidateEvent);
       peer.removeEventListener("track", handleRemoteTracks);
     };
@@ -128,22 +160,28 @@ const Room = () => {
     handleVideoOfferMsg,
     handleVideoAnswerMsg,
     handleNegotiationNeededEvent,
+    handleNegotiationNeededOffer,
+    handleNegotiationNeededFinal,
     handleICECandidateEvent,
     handleNewIceCandidateMsg,
     handleRemoteTracks,
+    addStream,
+    localStream
   ]);
 
   if (!remoteStream) {
-    return(
+    return (
       <div className="flex w-screen h-screen items-center justify-center">
-        <Waiting/>
+        <Waiting />
       </div>
     )
   }
 
   return (
-    <div>
-      <Stream localStream={localStream} remoteStream={remoteStream}/>
+    <div className="flex w-screen container m-auto h-screen py-20 justify-center gap-2 px-2">
+      <div className="flex-1 shrink">
+      <Stream localStream={localStream} remoteStream={remoteStream}/></div>
+      <div className="text-white hidden lg:block rounded-md px-2 overflow-hidden"><Chat /></div>
     </div>
   );
 };

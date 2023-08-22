@@ -11,7 +11,7 @@ export const useSocket = () => {
 }
 
 // initializing a new socket connection when the app loads
-const socket = io('https://videoco-express.onrender.com');
+const socket = io('http://localhost:5000');
 
 // setting up socket provider
 export const SocketProvider = (props) => {
