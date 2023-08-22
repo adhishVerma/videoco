@@ -11,7 +11,7 @@ export const useSocket = () => {
 }
 
 // initializing a new socket connection when the app loads
-const socket = io(process.env.WEBSITE_URL);
+const socket = io(process.env.REACT_APP_BACKEND_URL);
 
 // setting up socket provider
 export const SocketProvider = (props) => {
