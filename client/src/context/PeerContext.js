@@ -16,8 +16,8 @@ export const PeerProvider = (props) => {
     
     useEffect(() => {
       const getIce = async() => {
-        const iceservers = await axios.get("https://videoco-express.onrender.com/ice")
-        setIceServers(iceservers.data.slice(0,2))
+        const iceservers = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/ice`)
+        setIceServers(iceservers.data.slice(0,2));
       }
       getIce()
     }, [setIceServers])
