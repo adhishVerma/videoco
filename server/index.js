@@ -1,12 +1,16 @@
 const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io')
 const { getIce } = require("./controllers/getIce");
 const cors = require('cors');
 
 const app = express()
+const http = require('http');
 const server = http.createServer(app);
-const io = new Server(server, { cors: true });
+const { Server } = require("socket.io");
+const io = new Server(server, {
+  cors : {
+    origin : '*'
+  }
+});
 
 
 app.use(cors());
@@ -96,7 +100,8 @@ io.on('connection', socket => {
   });
 })
 
-
 const PORT = process.env.PORT || 5000
 
-server.listen(PORT, () => console.log(`server running on ${PORT}`))
+server.listen(PORT, () => {
+  console.log('listening on *:', PORT);
+});
