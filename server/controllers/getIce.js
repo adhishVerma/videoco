@@ -1,4 +1,5 @@
 const twilio = require('twilio')
+require('dotenv').config();
 
 const getIce = (req,res) => {
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
