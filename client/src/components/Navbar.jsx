@@ -8,7 +8,7 @@ const Navbar = () => {
       <nav className="flex justify-between py-2 px-2 lg:px-0 container m-auto">
         <div className="flex items-center text-lg">
             <a href="/">
-          <img src="/image.png" alt="logo" className="max-h-8 invert"/></a>
+          <img src="/image.png" alt="logo" className="max-h-8"/></a>
         </div>
         <div>
         </div>
