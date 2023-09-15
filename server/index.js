@@ -2,6 +2,10 @@ const express = require('express');
 const { getIce } = require("./controllers/getIce");
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
+const job = require('./cron.js');
+
+// Cron Job to keep the server alive
+job.start();
 
 const app = express()
 const http = require('http');
@@ -25,15 +29,15 @@ app.get("/ice", getIce);
 app.get(`/api/room-exists/:roomId`, (req, res) => {
   const { roomId } = req.params;
   const room = rooms.find((room) => room.id === roomId);
-  console.log({roomId : roomId, room: room, rooms: rooms});
+  console.log({ roomId: roomId, room: room, rooms: rooms });
   if (room) {
-      if (room.connectedUsers.length > 3) {
-          return res.send({ roomExists: true, full: true });
-      }else{
-          return res.send({ roomExists: true, full: false });
-      }
+    if (room.connectedUsers.length > 3) {
+      return res.send({ roomExists: true, full: true });
+    } else {
+      return res.send({ roomExists: true, full: false });
+    }
   } else {
-      return res.send({ roomExists: false });
+    return res.send({ roomExists: false });
   }
 });
 
@@ -49,7 +53,7 @@ io.on('connection', socket => {
 
   socket.on('join-room', (data) => {
     const { roomId, identity } = data;
-    if(roomId === null) return
+    if (roomId === null) return
     joinRoomHandler(roomId, identity, socket);
   })
 
@@ -65,7 +69,7 @@ io.on('connection', socket => {
   socket.on('send-message', (data) => {
     const { roomId } = data;
     const { message, messageId } = data.message;
-    socket.broadcast.to(roomId).emit('receive-message', { message, messageId, socketId : socket.id });
+    socket.broadcast.to(roomId).emit('receive-message', { message, messageId, socketId: socket.id });
   });
 
   // user disconnect
@@ -117,7 +121,7 @@ const joinRoomHandler = (roomId, identity, socket) => {
 
   // adding user to the room arr
   const room = rooms.find((room) => room.id === roomId);
-  room.connectedUsers = [... room.connectedUsers, newUser];
+  room.connectedUsers = [...room.connectedUsers, newUser];
 
   //moving socket to the room
   socket.join(roomId);
@@ -126,7 +130,7 @@ const joinRoomHandler = (roomId, identity, socket) => {
   connectedUsers.push(newUser);
 
   // emit to room to prepare for webRTC connection
-  const data = {connUserSocketId : socket.id};
+  const data = { connUserSocketId: socket.id };
   socket.broadcast.to(roomId).emit('prepare-webRTC', data);
 
   // room update of connected user.
@@ -147,7 +151,7 @@ const disconnectHandler = (socket) => {
     socket.leave(user.roomId);
 
     // emit to all users that user disconnected
-    io.to(room.id).emit('user-disconnected', {socketId : socket.id});
+    io.to(room.id).emit('user-disconnected', { socketId: socket.id });
 
     // close the room if users left are 0
     if (room.connectedUsers.length > 0) {
@@ -160,14 +164,14 @@ const disconnectHandler = (socket) => {
 }
 
 const signalHandler = (data, socket) => {
-  const {signal, connUserSocketId} = data;
-  const signalingData = {signal, connUserSocketId: socket.id};
+  const { signal, connUserSocketId } = data;
+  const signalingData = { signal, connUserSocketId: socket.id };
   socket.to(connUserSocketId).emit('conn-signal', signalingData);
 }
 
-const initConnHandler = (data,socket) => {
-  const {connUserSocketId} = data;
-  const initData = {connUserSocketId: socket.id};
+const initConnHandler = (data, socket) => {
+  const { connUserSocketId } = data;
+  const initData = { connUserSocketId: socket.id };
   io.to(connUserSocketId).emit('conn-init', initData);
 }
 
@@ -176,3 +180,5 @@ const PORT = process.env.PORT || 5000
 server.listen(PORT, () => {
   console.log('listening on :', PORT);
 });
+
+
