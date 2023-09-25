@@ -1,9 +1,8 @@
 # Videoco
 A Browser based application that can transmit video data between 2 browsers. Use it to video call others, by just using your email id.
 
-<!-- **Link to project:** http://recruiters-love-seeing-live-demos.com/ -->
+**Link to project:** http://videoco.vercel.app/
 
-<!-- ![alt tag](http://placecorgi.com/1200/650) -->
 
 ## How It's Made:
 
@@ -30,14 +29,13 @@ It can be used for audio streams, video streams, and screen sharing.
 
 For multiple devices to connect in a single call it's complex, but it's achievable.
 
-## Screenshots:
+## Future Plans:
+- Adding some caching behaviour for live chat.
+- Quality of Life changes for the frontend.
+- Migrate the codebase to typescript.
 
-![image](https://i.ibb.co/6BgNjMZ/videoco0.png)
 
-![image](https://i.ibb.co/R0SM8bs/videoco1.png)
 
-![image](https://i.ibb.co/gRh1VM3/videoco2.png)
 
-![image](https://i.ibb.co/J3kW9ZH/videoco3.png)
 
 
