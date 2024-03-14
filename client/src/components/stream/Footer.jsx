@@ -1,13 +1,14 @@
 import React, { useEffect } from "react";
 import { FaMicrophone, FaMicrophoneSlash } from "react-icons/fa";
-import { IoVideocam, IoVideocamOff } from "react-icons/io5";
+import { IoVideocam, IoVideocamOff, IoChatboxEllipses } from "react-icons/io5";
 import { BsFillVolumeUpFill, BsFillVolumeMuteFill } from "react-icons/bs";
 import { useMedia } from "../../context/MediaStreamContext";
 import { useNavigate } from "react-router-dom";
 import { ScreenSharingButton } from "./ScreenSharingButton";
-import {connect} from "react-redux";
+import { connect } from "react-redux";
+import Button from "../ui/Button";
 
-const Footer = ({onlyWithAudio}) => {
+const Footer = ({ onlyWithAudio, chatToggle }) => {
   let navigate = useNavigate();
   const {
     mute,
@@ -34,7 +35,7 @@ const Footer = ({onlyWithAudio}) => {
     toggleVideo()
     setVideoOpen(!videoOpen);
   };
-  
+
   // toggle audio track
   const toggleMic = () => {
     toggleAudio();
@@ -42,7 +43,7 @@ const Footer = ({onlyWithAudio}) => {
   };
 
   useEffect(() => {
-    if(onlyWithAudio){
+    if (onlyWithAudio) {
       toggleCamera();
     }
   })
@@ -51,31 +52,31 @@ const Footer = ({onlyWithAudio}) => {
     <>
       {localStream && (
         <div className="controls">
-          <div className="fixed bottom-0 left-0 right-0 flex justify-center gap-3 pb-3 text-xl z-10 items-center">
-            <button
-              className="bg-[rgba(255,255,255,0.17)] p-2 rounded-full opacity-50 hover:opacity-100 hover:scale-110"
+          <div className="fixed hover:bg-neutral-200 transition-colors duration-700 py-2 bottom-0 left-0 right-0 flex justify-center gap-3 text-xl z-10 items-center">
+            <Button
+              variant="icon"
               onClick={toggleCamera}
             >
               {videoOpen ? <IoVideocamOff /> : <IoVideocam />}
-            </button>
-            <button
-              className="bg-[rgba(255,255,255,0.17)] p-2 rounded-full opacity-50 hover:opacity-100 hover:scale-110"
+            </Button>
+            <Button
+              variant="icon"
               onClick={toggleMic}
             >
               {!micMuted ? <FaMicrophoneSlash /> : <FaMicrophone />}
-            </button>
-            <button
-              className="bg-[rgba(255,255,255,0.17)] p-2 rounded-full opacity-50 hover:opacity-100 hover:scale-110"
+            </Button>
+            <Button variant="icon"
               onClick={() => {
                 setMute(!mute);
               }}
             >
               {mute ? <BsFillVolumeMuteFill /> : <BsFillVolumeUpFill />}
-            </button>
-            <button onClick={handleLeave} className="bg-red-500 hover:bg-red-600 active:bg-red-600 text-base text-gray-100 hover:text-white px-3 rounded-lg scale-90 py-1">
-              Leave
-            </button>
+            </Button>
             <ScreenSharingButton />
+            <Button variant="icon" onClick={chatToggle}><IoChatboxEllipses /></Button>
+            <Button variant='danger' onClick={handleLeave} className="bg-red-500 hover:bg-red-600 active:bg-red-600 text-base text-gray-100 hover:text-white px-3 rounded-lg scale-90 py-1">
+              Leave
+            </Button>
           </div>
         </div>
       )}

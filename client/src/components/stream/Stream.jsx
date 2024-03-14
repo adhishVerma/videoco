@@ -4,17 +4,8 @@ import Footer from "./Footer";
 import { Video } from "./Video";
 
 
-const Stream = () => {
+const Stream = (props) => {
   const { mute, localStream, setLocalStream, remoteStreams, setRemoteStreams } = useMedia();
-
-  const handleFullScreenStream = (event) => {
-    const element = event.target
-    if (element.classList.contains('fullscreen-stream')) {
-      element.classList.remove('fullscreen-stream');
-    } else {
-      element.classList.add('fullscreen-stream');
-    }
-  }
 
 
   useEffect(() => {
@@ -47,16 +38,23 @@ const Stream = () => {
     }
   }, [remoteStreams, setLocalStream, setRemoteStreams])
 
+  let gridCols = (n) => {
+    if (n <= 1) return 1
+    return Math.sqrt(n);
+  }
+
+  // eslint-disable-next-line
+  let gridOptions = ["grid-cols-1", "grid-cols-2", "grid-cols-3", "grid-cols-4"]
 
   return (
     <div className="h-full w-full">
-      <div className='grid grid-cols-2 h-full w-full relative items-center justify-center'>
+      <div className={`grid grid-cols-${gridCols(remoteStreams.length)} h-full w-full relative items-center justify-center bg-skin-secondary px-2`}>
         {remoteStreams.map(r => {
-          return <div className="h-full w-full max-h-96" key={r.id} onClick={handleFullScreenStream}><Video stream={r.stream} muted={mute} /></div>
+          return <div className="h-full w-full max-h-96" key={r.id} ><Video stream={r.stream} muted={mute} /></div>
         })}
-        <div className="h-full w-full max-h-96" onClick={handleFullScreenStream}><Video stream={localStream} muted={true} name={"user"}/></div>
+        <div className="h-full w-full max-h-96 rounded" ><Video stream={localStream} muted={true} name={"user"} /></div>
       </div>
-      <Footer />
+      <Footer chatToggle={props.chatToggle} />
     </div>
   );
 };

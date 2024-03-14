@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { connect } from 'react-redux';
 import { setIsRoomHost, setRoomId } from "../store/actions";
 import { useMedia } from "../context/MediaStreamContext";
+import Button from "../components/ui/Button";
 
 
 const Connect = ({ setIsRoomHostAction }) => {
   const navigate = useNavigate();
-  const {setLocalStream, setRemoteStreams} = useMedia();
+  const { setLocalStream, setRemoteStreams } = useMedia();
 
 
   useEffect(() => {
@@ -32,12 +33,12 @@ const Connect = ({ setIsRoomHostAction }) => {
 
 
   return (
-    <div className="flex h-screen items-center justify-center">
-      <div className="max-w-md w-full p-12 shadow-md border rounded-md">
-        <div className="text-2xl mb-12 text-center">Create a room</div>
+    <div className="flex px-2 h-screen justify-center">
+      <div className="max-w-md w-full  mt-56 p-6 bg-white">
+        <div className="text-2xl font-semibold text-slate-700 mb-12 text-center">Create a room</div>
         <div className="flex flex-col gap-6">
-          <button className="bg-green-500 hover:bg-green-600 active:bg-green-400 text-white rounded-md px-8 py-2 w-1/2 self-center" onClick={pushToJoinRoomPage}>Join</button>
-          <button className="bg-blue-500 hover:bg-blue-600 active:bg-blue-400 text-white rounded-md px-8 py-2 w-1/2 self-center" onClick={pushToJoinRoomPageAsHost}>Create</button>
+          <Button variant='primary' onClick={pushToJoinRoomPage}>Join</Button>
+          <Button variant='secondary' onClick={pushToJoinRoomPageAsHost}>Create</Button>
         </div>
       </div>
     </div>

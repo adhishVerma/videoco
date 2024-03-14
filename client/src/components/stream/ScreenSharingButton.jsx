@@ -1,6 +1,7 @@
 import React from 'react'
 import { useMedia } from '../../context/MediaStreamContext';
 import { BsDisplay, BsCamera } from 'react-icons/bs';
+import Button from '../ui/Button';
 
 const constraints = {
     audio: false,
@@ -38,8 +39,8 @@ export const ScreenSharingButton = () => {
     }
 
     return (
-        <button onClick={handleScreenSharing} className="bg-[rgba(255,255,255,0.17)] p-2 rounded-full opacity-50 hover:opacity-100 hover:scale-110">
+        <Button onClick={handleScreenSharing} variant="icon">
             {!isScreenSharingActive ? <BsDisplay /> : <BsCamera />}
-        </button>
+        </Button>
     )
 }
