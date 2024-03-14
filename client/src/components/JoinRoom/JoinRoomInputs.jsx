@@ -1,10 +1,5 @@
-import React from 'react'
-
-const Input = ({placeholder,value, changeHandler}) => {
-    return(
-        <input className="outline-1 outline-gray-300 border-2 border-gray-200 py-2 rounded-sm px-5 text-lg text-gray-600 bg-blue-50" value={value} onChange={changeHandler} placeholder={placeholder}/>
-    )
-}
+import React from 'react';
+import Input from '../ui/Input';
 
 export const JoinRoomInputs = (props) => {
     const {roomIdValue, setRoomIdValue, nameValue, setNameValue, isRoomHost} = props;

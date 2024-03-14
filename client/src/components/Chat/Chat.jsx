@@ -3,12 +3,13 @@ import { AiOutlineSend } from "react-icons/ai";
 import { SentMessage } from './SentMessage';
 import { ReceivedMessage } from './ReceivedMessage';
 import { v4 as uuidv4 } from 'uuid';
-import {socket} from "../../utils/wss";
+import { socket } from "../../utils/wss";
 import { connect } from 'react-redux';
+import Button from '../ui/Button';
 
 
 const Chat = (props) => {
-    const {roomId, participants} = props;
+    const { roomId, participants } = props;
     const chatContainer = useRef();
     const [messages, setMessages] = useState([]);
     const [message, setMessage] = useState("");
@@ -16,7 +17,7 @@ const Chat = (props) => {
     const handleReceivedMessage = useCallback((data) => {
         const { message, messageId, socketId } = data;
         const identity = participants.find((participant) => participant.socketId === socketId).identity;
-        const newMessage = <ReceivedMessage message={message} key={messageId} identity={identity}/>;
+        const newMessage = <ReceivedMessage message={message} key={messageId} identity={identity} />;
         const copyMessages = [...messages];
         copyMessages.push(newMessage);
         setMessages(copyMessages);
@@ -64,8 +65,8 @@ const Chat = (props) => {
     }, [messages])
 
     return (
-        <div className='flex flex-col rounded-md p-3 relative h-full w-full gap-5 max-w-sm border border-[rgba(5,5,5,0.2)]'>
-            <div className='text-2xl font-bold'>
+        <div className='flex flex-col rounded p-2 relative h-full w-full gap-5'>
+            <div className='text-lg font-light opacity-75 text-center'>
                 Messages
             </div>
             <div className='overflow-clip flex-1 w-full'>
@@ -77,13 +78,13 @@ const Chat = (props) => {
                     </div>
                 </div>
             </div>
-            <div className='bottom-0 left-0 right-0 rounded-md'>
-                <div className='p-2'>
-                    <form className='flex p-2 gap-2 w-full rounded-lg border border-[rgba(5,5,5,0.2)]' onSubmit={handleSendMessage}>
-                        <div className='flex-1 shrink '>
-                            <input value={message} onChange={handleInput} type='text' className='outline-none w-full  bg-transparent py-1 px-3 rounded-md' />
+            <div className='bottom-0 left-0 right-0'>
+                <div className='m-2'>
+                    <form className='flex p-1 px-2 gap-2 w-full rounded bg-skin-secondary' onSubmit={handleSendMessage}>
+                        <div className='flex-1 min-h-10 max-h-24'>
+                            <input value={message} onChange={handleInput} type='text' className='resize-none outline-none px-3 w-full bg-skin-secondary p-2 rounded min-h-10 max-h-24' />
                         </div>
-                        <button type='submit' className='bg-green-600 px-2 rounded-full text-sm text-white'><AiOutlineSend /></button>
+                        <Button type='submit' variant="icon"><AiOutlineSend /></Button>
                     </form>
                 </div>
                 <div className=''>

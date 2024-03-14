@@ -29,7 +29,7 @@ app.get("/ice", getIce);
 app.get(`/api/room-exists/:roomId`, (req, res) => {
   const { roomId } = req.params;
   const room = rooms.find((room) => room.id === roomId);
-  console.log({ roomId: roomId, room: room, rooms: rooms });
+
   if (room) {
     if (room.connectedUsers.length > 3) {
       return res.send({ roomExists: true, full: true });
