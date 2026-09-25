@@ -2,6 +2,7 @@ import React, { createContext } from "react";
 import { useContext } from "react";
 import * as webRTCHandler from '../utils/webRTCHandler';
 import * as captionsUtil from '../utils/captions';
+import * as livekitHandler from '../utils/livekitHandler';
 import { socket, sendCaption } from '../utils/wss';
 export const MediaStreamContext = createContext();
 
@@ -60,20 +61,33 @@ export const MediaStreamProvider = (props) => {
       track.stop();
     })
     captionsUtil.stopCaptioning();
+    livekitHandler.disconnectLiveKitRoom();
   }
 
   const toggleAudio = () => {
-    localStream.getAudioTracks()[0].enabled = micMuted ? false : true;
+    const enabled = micMuted ? false : true;
+    localStream.getAudioTracks()[0].enabled = enabled;
+    if (livekitHandler.isUsingLiveKit()) {
+      livekitHandler.setLiveKitMicEnabled(enabled);
+    }
   }
 
   const toggleVideo = () => {
-    localStream.getVideoTracks()[0].enabled = videoOpen ? true : false;
+    const enabled = videoOpen ? true : false;
+    localStream.getVideoTracks()[0].enabled = enabled;
+    if (livekitHandler.isUsingLiveKit()) {
+      livekitHandler.setLiveKitCameraEnabled(enabled);
+    }
   }
 
   const toggleScreenShare = (
     isScreenSharingActive,
     screenSharingStream = null
   ) => {
+    // LiveKit's own screen-share toggle (called directly from
+    // ScreenSharingButton) handles capture + publish itself.
+    if (livekitHandler.isUsingLiveKit()) return;
+
     if (isScreenSharingActive) {
       webRTCHandler.switchVideoTracks(localStream);
     } else {

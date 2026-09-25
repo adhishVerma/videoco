@@ -47,7 +47,11 @@ const createRoom = (store, identity, socketId, password) => {
   return { roomId, user: newUser, room: newRoom };
 };
 
-const joinRoom = (store, roomId, identity, socketId, password) => {
+// read-only check reused by both the socket join handler (below) and the
+// LiveKit token endpoint, which needs to verify a room's password without
+// mutating membership - the socket join is still the source of truth for
+// who's actually in a room.
+const checkRoomAccess = (store, roomId, password) => {
   const room = store.rooms.find((room) => room.id === roomId);
   if (!room) {
     return { error: 'not-found' };
@@ -56,6 +60,16 @@ const joinRoom = (store, roomId, identity, socketId, password) => {
   if (room.passwordHash && !verifyPassword(password, room.passwordHash)) {
     return { error: 'invalid-password' };
   }
+
+  return { room };
+};
+
+const joinRoom = (store, roomId, identity, socketId, password) => {
+  const access = checkRoomAccess(store, roomId, password);
+  if (access.error) {
+    return access;
+  }
+  const { room } = access;
 
   const newUser = { identity, id: uuidv4(), socketId, roomId };
   room.connectedUsers = [...room.connectedUsers, newUser];
@@ -91,6 +105,7 @@ const disconnectUser = (store, socketId) => {
 module.exports = {
   createStore,
   getRoomStatus,
+  checkRoomAccess,
   createRoom,
   joinRoom,
   disconnectUser,

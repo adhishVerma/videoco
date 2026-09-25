@@ -1,6 +1,7 @@
 const express = require('express');
 const { getIce } = require("./controllers/getIce");
 const { getAttachmentsStatus, getUploadUrl } = require("./controllers/attachments");
+const { getLiveKitStatus, createGetTokenHandler } = require("./controllers/livekit");
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const job = require('./cron.js');
@@ -38,6 +39,7 @@ const store = roomsStore.createStore();
 const iceLimiter = rateLimit({ windowMs: 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false });
 const roomLookupLimiter = rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
 const uploadLimiter = rateLimit({ windowMs: 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false });
+const livekitTokenLimiter = rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
 
 app.get("/ice", iceLimiter, getIce);
 app.get(`/api/room-exists/:roomId`, roomLookupLimiter, (req, res) => {
@@ -47,6 +49,9 @@ app.get(`/api/room-exists/:roomId`, roomLookupLimiter, (req, res) => {
 
 app.get("/api/attachments-status", getAttachmentsStatus);
 app.post("/api/upload-url", uploadLimiter, getUploadUrl);
+
+app.get("/api/livekit-status", getLiveKitStatus);
+app.post("/api/livekit-token", livekitTokenLimiter, createGetTokenHandler(roomsStore, store));
 
 
 // when client connects

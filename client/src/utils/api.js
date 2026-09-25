@@ -21,3 +21,13 @@ export const getUploadUrl = async (fileName, contentType, fileSize) => {
     const response = await axios.post(`${url}/api/upload-url`, { fileName, contentType, fileSize });
     return response.data;
 };
+
+export const getLiveKitStatus = async () => {
+    const response = await axios.get(`${url}/api/livekit-status`);
+    return response.data;
+};
+
+export const getLiveKitToken = async (roomId, identity, socketId, password) => {
+    const response = await axios.post(`${url}/api/livekit-token`, { roomId, identity, socketId, password });
+    return response.data;
+};

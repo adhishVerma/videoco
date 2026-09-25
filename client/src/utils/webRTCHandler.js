@@ -1,5 +1,6 @@
 import { fetchTURNCredentials, getTurnIceServers } from './turn';
 import * as wss from './wss';
+import * as livekitHandler from './livekitHandler';
 import Peer from 'simple-peer';
 
 
@@ -24,6 +25,18 @@ export const getLocalPreviewAndInitRoomConnection = async (
     onlyAudio,
     roomPassword
 ) => {
+
+    const liveKitAvailable = await livekitHandler.isLiveKitAvailable();
+    if (liveKitAvailable) {
+        try {
+            await livekitHandler.startLiveKitFlow(isRoomHost, identity, roomId, onlyAudio, roomPassword);
+        } catch (err) {
+            console.log('LiveKit connection failed', err);
+            const event = new CustomEvent('media-access-error', { detail: { error: err } });
+            window.dispatchEvent(event);
+        }
+        return;
+    }
 
     const constraints = onlyAudio ? onlyAudioConstraints : defaultConsttraints;
 
