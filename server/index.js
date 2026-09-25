@@ -74,6 +74,12 @@ io.on('connection', socket => {
     socket.broadcast.to(roomId).emit('receive-message', { message, messageId, socketId: socket.id });
   });
 
+  // live caption relay - text only, never persisted
+  socket.on('send-caption', (data) => {
+    const { roomId, text } = data;
+    socket.broadcast.to(roomId).emit('receive-caption', { text, socketId: socket.id });
+  });
+
   // user disconnect
   socket.on('disconnect', () => {
     disconnectHandler(socket);

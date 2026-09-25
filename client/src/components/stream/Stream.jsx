@@ -1,11 +1,12 @@
 import React, { useEffect } from "react";
 import { useMedia } from "../../context/MediaStreamContext";
+import { socket } from "../../utils/wss";
 import Footer from "./Footer";
 import { Video } from "./Video";
 
 
 const Stream = (props) => {
-  const { mute, localStream, setLocalStream, remoteStreams, setRemoteStreams } = useMedia();
+  const { mute, localStream, setLocalStream, remoteStreams, setRemoteStreams, captions } = useMedia();
 
 
   useEffect(() => {
@@ -50,9 +51,9 @@ const Stream = (props) => {
     <div className="h-full w-full">
       <div className={`grid grid-cols-${gridCols(remoteStreams.length)} h-full w-full relative items-center justify-center bg-skin-secondary px-2`}>
         {remoteStreams.map(r => {
-          return <div className="h-full w-full max-h-96" key={r.id} ><Video stream={r.stream} muted={mute} /></div>
+          return <div className="h-full w-full max-h-96" key={r.id} ><Video stream={r.stream} muted={mute} caption={captions[r.id]} /></div>
         })}
-        <div className="h-full w-full max-h-96 rounded" ><Video stream={localStream} muted={true} name={"user"} /></div>
+        <div className="h-full w-full max-h-96 rounded" ><Video stream={localStream} muted={true} name={"user"} caption={captions[socket.id]} /></div>
       </div>
       <Footer chatToggle={props.chatToggle} />
     </div>

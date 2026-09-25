@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { FaMicrophone, FaMicrophoneSlash } from "react-icons/fa";
+import { FaMicrophone, FaMicrophoneSlash, FaClosedCaptioning } from "react-icons/fa";
 import { IoVideocam, IoVideocamOff, IoChatboxEllipses } from "react-icons/io5";
 import { BsFillVolumeUpFill, BsFillVolumeMuteFill } from "react-icons/bs";
 import { useMedia } from "../../context/MediaStreamContext";
@@ -20,7 +20,10 @@ const Footer = ({ onlyWithAudio, chatToggle }) => {
     localStream,
     closeStream,
     toggleAudio,
-    toggleVideo
+    toggleVideo,
+    captionsEnabled,
+    toggleCaptions,
+    captionsSupported
   } = useMedia();
 
 
@@ -73,6 +76,16 @@ const Footer = ({ onlyWithAudio, chatToggle }) => {
               {mute ? <BsFillVolumeMuteFill /> : <BsFillVolumeUpFill />}
             </Button>
             <ScreenSharingButton />
+            {captionsSupported && (
+              <Button
+                variant="icon"
+                onClick={toggleCaptions}
+                className={captionsEnabled ? 'text-blue-500' : ''}
+                title={captionsEnabled ? 'Turn off captions' : 'Turn on captions'}
+              >
+                <FaClosedCaptioning />
+              </Button>
+            )}
             <Button variant="icon" onClick={chatToggle}><IoChatboxEllipses /></Button>
             <Button variant='danger' onClick={handleLeave} className="bg-red-500 hover:bg-red-600 active:bg-red-600 text-base text-gray-100 hover:text-white px-3 rounded-lg scale-90 py-1">
               Leave

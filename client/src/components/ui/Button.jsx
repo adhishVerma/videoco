@@ -20,7 +20,7 @@ const Button = (props) => {
             break;
     }
     return (
-        <button onClick={props.onClick} className={`${style} outline-none text-clip font-medium text-base rounded py-1.5 px-3 self-center min-w-24 max-w-content shadow active:shadow-sm opacity-90 hover:opacity-100`}>{props.children}</button>
+        <button type={props.type} onClick={props.onClick} title={props.title} className={`${style} outline-none text-clip font-medium text-base rounded py-1.5 px-3 self-center min-w-24 max-w-content shadow active:shadow-sm opacity-90 hover:opacity-100 ${props.className || ''}`}>{props.children}</button>
     )
 }
 

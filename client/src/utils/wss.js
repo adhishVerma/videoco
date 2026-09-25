@@ -75,4 +75,10 @@ export const signalPeerData = (data) => {
     socket.emit('conn-signal', data);
 }
 
+export const sendCaption = (text) => {
+    const { roomId } = store.getState();
+    if (!roomId) return;
+    socket.emit('send-caption', { roomId, text });
+}
+
 export {socket}
