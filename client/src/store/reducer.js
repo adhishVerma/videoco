@@ -5,6 +5,7 @@ const initState = {
     isRoomHost : false,
     connectOnlyAudio : false,
     roomId : null,
+    roomPassword : '',
     participants : [],
 };
 
@@ -34,6 +35,11 @@ const reducer = (state = initState, action) => {
             return {
                 ...state,
                 participants : action.participants
+            }
+        case Actions.SET_ROOM_PASSWORD:
+            return {
+                ...state,
+                roomPassword : action.roomPassword
             }
 
         default:

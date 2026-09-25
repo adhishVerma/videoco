@@ -46,20 +46,27 @@ export const connectWithSocketIOServer = () => {
     socket.on('user-disconnected', (data) => {
         webRTCHandler.removePeerConnection(data);
     })
+
+    socket.on('join-error', (data) => {
+        const event = new CustomEvent('join-error', { detail: data });
+        window.dispatchEvent(event);
+    })
 }
 
-export const createNewRoom = (identity) => {
+export const createNewRoom = (identity, password) => {
     const data = {
-        identity
+        identity,
+        password
     }
     socket.emit('create-room', data);
 }
 
-export const joinRoom = (identity, roomId) => {
+export const joinRoom = (identity, roomId, password) => {
 
     const data = {
         identity,
-        roomId
+        roomId,
+        password
     }
     socket.emit('join-room', data);
 }

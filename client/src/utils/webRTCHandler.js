@@ -21,7 +21,8 @@ export const getLocalPreviewAndInitRoomConnection = async (
     isRoomHost,
     identity,
     roomId = null,
-    onlyAudio
+    onlyAudio,
+    roomPassword
 ) => {
 
     const constraints = onlyAudio ? onlyAudioConstraints : defaultConsttraints;
@@ -31,10 +32,12 @@ export const getLocalPreviewAndInitRoomConnection = async (
     navigator.mediaDevices.getUserMedia(constraints).then(stream => {
         localStream = stream
         showLocalVideoPreview(localStream);
-        isRoomHost ? wss.createNewRoom(identity) : wss.joinRoom(identity, roomId);
+        isRoomHost ? wss.createNewRoom(identity, roomPassword) : wss.joinRoom(identity, roomId, roomPassword);
 
     }).catch((err) => {
         console.log(err)
+        const event = new CustomEvent('media-access-error', { detail: { error: err } });
+        window.dispatchEvent(event);
     })
 }
 

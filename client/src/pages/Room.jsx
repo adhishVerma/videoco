@@ -4,9 +4,12 @@ import { connect } from "react-redux";
 import * as webRTCHandler from '../utils/webRTCHandler';
 import Chat from "../components/Chat/Chat";
 import { useSpring, animated } from '@react-spring/web'
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 
-const Room = ({ roomId, identity, isRoomHost, connectOnlyAudio }) => {
+const Room = ({ roomId, identity, isRoomHost, connectOnlyAudio, roomPassword }) => {
+  const navigate = useNavigate();
   const [springs, api] = useSpring(() => ({
     from: { width: '24rem'},
   }));
@@ -21,7 +24,29 @@ const Room = ({ roomId, identity, isRoomHost, connectOnlyAudio }) => {
   }
 
   useEffect(() => {
-    webRTCHandler.getLocalPreviewAndInitRoomConnection(isRoomHost, identity, roomId, connectOnlyAudio);
+    webRTCHandler.getLocalPreviewAndInitRoomConnection(isRoomHost, identity, roomId, connectOnlyAudio, roomPassword);
+    // eslint-disable-next-line
+  }, []);
+
+  useEffect(() => {
+    const handleJoinError = (event) => {
+      const { reason } = event.detail;
+      const message = reason === 'invalid-password' ? 'Wrong room password' : 'Room not found';
+      toast.error(message, { position: "bottom-right" });
+      navigate('/join-room');
+    }
+
+    const handleMediaAccessError = () => {
+      toast.error('Could not access your camera/microphone. Check browser permissions and try again.', { position: "bottom-right" });
+    }
+
+    window.addEventListener('join-error', handleJoinError);
+    window.addEventListener('media-access-error', handleMediaAccessError);
+
+    return () => {
+      window.removeEventListener('join-error', handleJoinError);
+      window.removeEventListener('media-access-error', handleMediaAccessError);
+    }
     // eslint-disable-next-line
   }, []);
 

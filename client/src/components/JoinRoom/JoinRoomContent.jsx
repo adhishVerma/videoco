@@ -3,16 +3,17 @@ import { JoinRoomInputs } from './JoinRoomInputs';
 import { connect } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { OnlyWithAudioCheck } from './OnlyWithAudioCheck';
-import { setConnectOnlyAudio, setIdentity, setRoomId } from '../../store/actions';
+import { setConnectOnlyAudio, setIdentity, setRoomId, setRoomPassword } from '../../store/actions';
 import { toast } from 'react-toastify';
 import { getRoomExists } from '../../utils/api';
 import Button from '../ui/Button';
 
 
 const JoinRoomContent = (props) => {
-  const { isRoomHost, setConnectOnlyAudio, connectOnlyAudio, setRoomAction, setIdentityAction } = props;
+  const { isRoomHost, setConnectOnlyAudio, connectOnlyAudio, setRoomAction, setIdentityAction, setRoomPasswordAction } = props;
   const [roomIdValue, setRoomIdValue] = useState("");
   const [nameValue, setNameValue] = useState("");
+  const [passwordValue, setPasswordValue] = useState("");
   const navigate = useNavigate();
 
 
@@ -24,6 +25,7 @@ const JoinRoomContent = (props) => {
 
     // request the server if room exists.
     setIdentityAction(nameValue);
+    setRoomPasswordAction(passwordValue);
     if (isRoomHost) {
       createRoom();
     } else {
@@ -89,6 +91,8 @@ const JoinRoomContent = (props) => {
         setRoomIdValue={setRoomIdValue}
         nameValue={nameValue}
         setNameValue={setNameValue}
+        passwordValue={passwordValue}
+        setPasswordValue={setPasswordValue}
         isRoomHost={isRoomHost}
       />
       <OnlyWithAudioCheck
@@ -112,6 +116,7 @@ const mapActionsToProps = (dispatch) => {
     setConnectOnlyAudio: (onlyWithAudio) => dispatch(setConnectOnlyAudio(onlyWithAudio)),
     setIdentityAction: (identity) => dispatch(setIdentity(identity)),
     setRoomAction: (roomId) => dispatch(setRoomId(roomId)),
+    setRoomPasswordAction: (roomPassword) => dispatch(setRoomPassword(roomPassword)),
   }
 }
 

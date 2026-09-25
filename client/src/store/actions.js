@@ -4,6 +4,7 @@ const Actions = {
     SET_IDENTITY: "SET_IDENTITY",
     SET_ROOM_ID: "SET_ROOM_ID",
     SET_PARTICIPANTS  : "SET_PARTICIPANTS",
+    SET_ROOM_PASSWORD : "SET_ROOM_PASSWORD",
 }
 
 export const setIsRoomHost = (isRoomHost) => {
@@ -38,6 +39,13 @@ export const setParticipants = (participants) => {
     return {
         type : Actions.SET_PARTICIPANTS,
         participants
+    }
+}
+
+export const setRoomPassword = (roomPassword) => {
+    return {
+        type : Actions.SET_ROOM_PASSWORD,
+        roomPassword
     }
 }
 
