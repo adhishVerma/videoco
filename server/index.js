@@ -1,8 +1,8 @@
 const express = require('express');
 const { getIce } = require("./controllers/getIce");
 const cors = require('cors');
-const { v4: uuidv4 } = require('uuid');
 const job = require('./cron.js');
+const roomsStore = require('./rooms');
 
 // Cron Job to keep the server alive
 job.start();
@@ -22,23 +22,12 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
-let connectedUsers = [];
-let rooms = []
+const store = roomsStore.createStore();
 
 app.get("/ice", getIce);
 app.get(`/api/room-exists/:roomId`, (req, res) => {
   const { roomId } = req.params;
-  const room = rooms.find((room) => room.id === roomId);
-
-  if (room) {
-    if (room.connectedUsers.length > 3) {
-      return res.send({ roomExists: true, full: true });
-    } else {
-      return res.send({ roomExists: true, full: false });
-    }
-  } else {
-    return res.send({ roomExists: false });
-  }
+  return res.send(roomsStore.getRoomStatus(store, roomId));
 });
 
 
@@ -81,30 +70,13 @@ io.on('connection', socket => {
 // socket io handlers
 const createNewRoomHandler = (identity, socket) => {
 
-  const roomId = uuidv4();
+  const { roomId: newRoomId, room: newRoom } = roomsStore.createRoom(store, identity, socket.id);
 
-  // creating a new User
-  const newUser = {
-    identity,
-    id: uuidv4(),
-    socketId: socket.id,
-    roomId
-  }
-  connectedUsers.push(newUser); //push the user to connectedUsers.
-
-  const newRoom = {
-    id: roomId,
-    connectedUsers: [newUser]
-  }
   // joining the new room
-  socket.join(roomId);
-
-  rooms = [...rooms, newRoom];
-  console.log("pushed-room", rooms)
-
+  socket.join(newRoomId);
 
   // emit to the client which created the room
-  socket.emit('room-id', { roomId });
+  socket.emit('room-id', { roomId: newRoomId });
 
   // emit event to all users connected, about new users
   socket.emit('room-update', { connectedUsers: newRoom.connectedUsers })
@@ -112,22 +84,12 @@ const createNewRoomHandler = (identity, socket) => {
 
 const joinRoomHandler = (roomId, identity, socket) => {
 
-  const newUser = {
-    identity,
-    id: uuidv4(),
-    socketId: socket.id,
-    roomId
-  }
-
-  // adding user to the room arr
-  const room = rooms.find((room) => room.id === roomId);
-  room.connectedUsers = [...room.connectedUsers, newUser];
+  const result = roomsStore.joinRoom(store, roomId, identity, socket.id);
+  if (!result) return;
+  const { room } = result;
 
   //moving socket to the room
   socket.join(roomId);
-
-  // adding new user to all user array
-  connectedUsers.push(newUser);
 
   // emit to room to prepare for webRTC connection
   const data = { connUserSocketId: socket.id };
@@ -139,25 +101,18 @@ const joinRoomHandler = (roomId, identity, socket) => {
 }
 
 const disconnectHandler = (socket) => {
-  // find if user has been registered.
-  const user = connectedUsers.find(user => user.socketId === socket.id);
-  if (user) {
-    const users = connectedUsers.filter((user) => user.socketId !== socket.id);
-    connectedUsers = users;
+  const result = roomsStore.disconnectUser(store, socket.id);
+  if (result && result.room) {
+    const { room, roomClosed } = result;
 
-    const room = rooms.find(room => room.id === user.roomId);
-    room.connectedUsers = room.connectedUsers.filter(user => user.socketId !== socket.id);
-
-    socket.leave(user.roomId);
+    socket.leave(room.id);
 
     // emit to all users that user disconnected
     io.to(room.id).emit('user-disconnected', { socketId: socket.id });
 
-    // close the room if users left are 0
-    if (room.connectedUsers.length > 0) {
+    // room update, or nothing left to update if the room closed
+    if (!roomClosed) {
       io.to(room.id).emit('room-update', { connectedUsers: room.connectedUsers });
-    } else {
-      rooms = rooms.filter((r) => r.id !== room.id);
     }
   }
   console.log('socket-dc', socket.id);
