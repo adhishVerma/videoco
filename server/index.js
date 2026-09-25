@@ -1,31 +1,44 @@
 const express = require('express');
 const { getIce } = require("./controllers/getIce");
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const job = require('./cron.js');
 const roomsStore = require('./rooms');
 
 // Cron Job to keep the server alive
 job.start();
 
+// comma-separated list of allowed client origins, e.g. "https://videoco.vercel.app,http://localhost:3000"
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:3000')
+  .split(',')
+  .map((origin) => origin.trim());
+
+const corsOptions = {
+  origin: allowedOrigins,
+  methods: ["GET", "POST"]
+};
+
 const app = express()
 const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ["GET", "POST"]
-  }
+  cors: corsOptions
 });
 
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 const store = roomsStore.createStore();
 
-app.get("/ice", getIce);
-app.get(`/api/room-exists/:roomId`, (req, res) => {
+// TURN credentials mint a real (billed) Twilio resource, and room-exists is a
+// cheap enumeration target - both get a conservative per-IP rate limit.
+const iceLimiter = rateLimit({ windowMs: 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false });
+const roomLookupLimiter = rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
+
+app.get("/ice", iceLimiter, getIce);
+app.get(`/api/room-exists/:roomId`, roomLookupLimiter, (req, res) => {
   const { roomId } = req.params;
   return res.send(roomsStore.getRoomStatus(store, roomId));
 });
