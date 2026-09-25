@@ -54,17 +54,19 @@ const Footer = ({ onlyWithAudio, chatToggle }) => {
   return (
     <>
       {localStream && (
-        <div className="controls">
-          <div className="fixed hover:bg-neutral-200 transition-colors duration-700 py-2 bottom-0 left-0 right-0 flex justify-center gap-3 text-xl z-10 items-center">
+        <div className="fixed bottom-0 left-0 right-0 z-10 flex justify-center px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="flex flex-wrap justify-center items-center gap-2 bg-white/95 backdrop-blur shadow-lg rounded-2xl px-2 py-2">
             <Button
               variant="icon"
               onClick={toggleCamera}
+              title={videoOpen ? 'Turn off camera' : 'Turn on camera'}
             >
               {videoOpen ? <IoVideocamOff /> : <IoVideocam />}
             </Button>
             <Button
               variant="icon"
               onClick={toggleMic}
+              title={!micMuted ? 'Mute mic' : 'Unmute mic'}
             >
               {!micMuted ? <FaMicrophoneSlash /> : <FaMicrophone />}
             </Button>
@@ -72,6 +74,7 @@ const Footer = ({ onlyWithAudio, chatToggle }) => {
               onClick={() => {
                 setMute(!mute);
               }}
+              title={mute ? 'Unmute speaker' : 'Mute speaker'}
             >
               {mute ? <BsFillVolumeMuteFill /> : <BsFillVolumeUpFill />}
             </Button>
@@ -80,14 +83,14 @@ const Footer = ({ onlyWithAudio, chatToggle }) => {
               <Button
                 variant="icon"
                 onClick={toggleCaptions}
-                className={captionsEnabled ? 'text-blue-500' : ''}
+                className={captionsEnabled ? '!text-blue-500' : ''}
                 title={captionsEnabled ? 'Turn off captions' : 'Turn on captions'}
               >
                 <FaClosedCaptioning />
               </Button>
             )}
-            <Button variant="icon" onClick={chatToggle}><IoChatboxEllipses /></Button>
-            <Button variant='danger' onClick={handleLeave} className="bg-red-500 hover:bg-red-600 active:bg-red-600 text-base text-gray-100 hover:text-white px-3 rounded-lg scale-90 py-1">
+            <Button variant="icon" onClick={chatToggle} title="Chat"><IoChatboxEllipses /></Button>
+            <Button variant='danger' onClick={handleLeave} className="!min-w-[44px] !min-h-[44px] text-gray-100 hover:text-white">
               Leave
             </Button>
           </div>

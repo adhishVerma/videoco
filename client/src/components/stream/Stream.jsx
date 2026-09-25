@@ -39,17 +39,22 @@ const Stream = (props) => {
     }
   }, [remoteStreams, setLocalStream, setRemoteStreams])
 
-  let gridCols = (n) => {
-    if (n <= 1) return 1
-    return Math.sqrt(n);
-  }
+  // grid needs a column count for the whole tile count (remote streams + the
+  // local tile below), not just the remote count, and it must be a whole
+  // number - "grid-cols-1.41..." isn't a real Tailwind class and silently
+  // does nothing, leaving the grid uncolumned for 3+ participants.
+  const totalTiles = remoteStreams.length + 1;
+  const gridColsCount = Math.min(4, Math.max(1, Math.ceil(Math.sqrt(totalTiles))));
 
   // eslint-disable-next-line
-  let gridOptions = ["grid-cols-1", "grid-cols-2", "grid-cols-3", "grid-cols-4"]
+  let gridOptions = [
+    "grid-cols-1", "grid-cols-2", "grid-cols-3", "grid-cols-4",
+    "sm:grid-cols-1", "sm:grid-cols-2", "sm:grid-cols-3", "sm:grid-cols-4"
+  ]
 
   return (
     <div className="h-full w-full">
-      <div className={`grid grid-cols-${gridCols(remoteStreams.length)} h-full w-full relative items-center justify-center bg-skin-secondary px-2`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-${gridColsCount} gap-2 h-full w-full relative items-center justify-center bg-skin-secondary px-2 overflow-y-auto`}>
         {remoteStreams.map(r => {
           return <div className="h-full w-full max-h-96" key={r.id} ><Video stream={r.stream} muted={mute} caption={captions[r.id]} /></div>
         })}

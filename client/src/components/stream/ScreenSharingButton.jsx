@@ -8,8 +8,14 @@ const constraints = {
     video: true
 }
 
+const isScreenShareSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+
 export const ScreenSharingButton = () => {
     const { screenSharingStream, setScreenSharingStream, isScreenSharingActive, setIsScreenSharingActive, toggleScreenShare } = useMedia();
+
+    // most mobile browsers don't support getDisplayMedia - hide the
+    // control instead of showing a button that would silently fail.
+    if (!isScreenShareSupported) return null;
 
     const handleScreenSharing = async () => {
         if (!isScreenSharingActive) {

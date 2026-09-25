@@ -13,7 +13,7 @@ const Button = (props) => {
             style = 'bg-red-500 text-skin-btn-primary'
             break;
         case 'icon':
-            style = 'bg-skin-btn-secondary text-skin-btn-secondary !max-w-fit !min-w-0 text-xl !py-2'
+            style = 'bg-skin-btn-secondary text-skin-btn-secondary !max-w-fit !min-w-[44px] !min-h-[44px] flex items-center justify-center text-xl !p-0 rounded-full'
             break;
         default:
             style = 'bg-skin-btn-primary text-skin-btn-primary'

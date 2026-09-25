@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { AiOutlineSend } from "react-icons/ai";
+import { IoClose } from "react-icons/io5";
 import { SentMessage } from './SentMessage';
 import { ReceivedMessage } from './ReceivedMessage';
 import { v4 as uuidv4 } from 'uuid';
@@ -9,7 +10,7 @@ import Button from '../ui/Button';
 
 
 const Chat = (props) => {
-    const { roomId, participants } = props;
+    const { roomId, participants, onClose } = props;
     const chatContainer = useRef();
     const [messages, setMessages] = useState([]);
     const [message, setMessage] = useState("");
@@ -65,13 +66,18 @@ const Chat = (props) => {
     }, [messages])
 
     return (
-        <div className='flex flex-col rounded p-2 relative h-full w-full gap-5'>
-            <div className='text-lg font-light opacity-75 text-center'>
-                Messages
+        <div className='flex flex-col p-2 relative h-full w-full gap-3'>
+            <div className='flex items-center justify-between px-1'>
+                <div className='text-lg font-medium text-gray-700'>Messages</div>
+                {onClose && (
+                    <Button variant='icon' onClick={onClose} title="Close chat" className="!min-w-[36px] !min-h-[36px] !bg-transparent !shadow-none">
+                        <IoClose />
+                    </Button>
+                )}
             </div>
             <div className='overflow-clip flex-1 w-full'>
                 <div className='overflow-y-scroll h-full' ref={chatContainer}>
-                    <div className='chat-window mt-6 h-full'>
+                    <div className='chat-window h-full'>
                         {messages.map((item) => {
                             return item
                         })}
@@ -79,17 +85,12 @@ const Chat = (props) => {
                 </div>
             </div>
             <div className='bottom-0 left-0 right-0'>
-                <div className='m-2'>
-                    <form className='flex p-1 px-2 gap-2 w-full rounded bg-skin-secondary' onSubmit={handleSendMessage}>
-                        <div className='flex-1 min-h-10 max-h-24'>
-                            <input value={message} onChange={handleInput} type='text' className='resize-none outline-none px-3 w-full bg-skin-secondary p-2 rounded min-h-10 max-h-24' />
-                        </div>
-                        <Button type='submit' variant="icon"><AiOutlineSend /></Button>
-                    </form>
-                </div>
-                <div className=''>
-                    {/* <div className='border border-dashed rounded-md overflow-hidden'><Attachment /></div> */}
-                </div>
+                <form className='flex p-1 px-2 gap-2 w-full rounded bg-skin-secondary' onSubmit={handleSendMessage}>
+                    <div className='flex-1 min-h-10 max-h-24'>
+                        <input value={message} onChange={handleInput} type='text' placeholder='Type a message' className='resize-none outline-none px-3 w-full bg-skin-secondary p-2 rounded min-h-10 max-h-24' />
+                    </div>
+                    <Button type='submit' variant="icon"><AiOutlineSend /></Button>
+                </form>
             </div>
         </div>
     )

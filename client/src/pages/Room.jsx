@@ -1,27 +1,17 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Stream from "../components/stream/Stream";
 import { connect } from "react-redux";
 import * as webRTCHandler from '../utils/webRTCHandler';
 import Chat from "../components/Chat/Chat";
-import { useSpring, animated } from '@react-spring/web'
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
 
 const Room = ({ roomId, identity, isRoomHost, connectOnlyAudio, roomPassword }) => {
   const navigate = useNavigate();
-  const [springs, api] = useSpring(() => ({
-    from: { width: '24rem'},
-  }));
+  const [chatOpen, setChatOpen] = useState(false);
 
-
-  const showChat = () => {
-    api.start({
-      to: {
-        width: springs.width.get() === '24rem' ? '0rem' : '24rem',
-      },
-    })
-  }
+  const toggleChat = () => setChatOpen((open) => !open);
 
   useEffect(() => {
     webRTCHandler.getLocalPreviewAndInitRoomConnection(isRoomHost, identity, roomId, connectOnlyAudio, roomPassword);
@@ -51,12 +41,19 @@ const Room = ({ roomId, identity, isRoomHost, connectOnlyAudio, roomPassword }) 
   }, []);
 
   return (
-    <div className="flex w-screen relative container m-auto h-screen py-20 justify-center gap-2 px-2">
-      <div className="fixed top-0 text-center py-6 rounded-b px-4 z-50">Room Id: {roomId}</div>
-      <div className="flex-1 relative rounded overflow-hidden">
-        <Stream chatToggle={showChat}/>
+    <div className="relative w-screen h-screen overflow-hidden bg-skin-secondary">
+      <div className="h-full pt-16 pb-2 px-2">
+        <Stream chatToggle={toggleChat} />
       </div>
-      <animated.div style={{ ...springs }} className="border-skin-primary hidden lg:block rounded overflow-hidden shadow"><Chat /></animated.div>
+
+      {chatOpen && (
+        <div className="fixed inset-0 bg-black/30 z-30" onClick={toggleChat} />
+      )}
+      <div
+        className={`fixed top-0 right-0 z-40 h-full w-full sm:w-96 max-w-full bg-white shadow-2xl pt-16 transition-transform duration-300 ease-in-out ${chatOpen ? 'translate-x-0' : 'translate-x-full'}`}
+      >
+        <Chat onClose={toggleChat} />
+      </div>
     </div>
   );
 };
