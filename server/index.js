@@ -1,5 +1,6 @@
 const express = require('express');
 const { getIce } = require("./controllers/getIce");
+const { getAttachmentsStatus, getUploadUrl } = require("./controllers/attachments");
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const job = require('./cron.js');
@@ -36,12 +37,16 @@ const store = roomsStore.createStore();
 // cheap enumeration target - both get a conservative per-IP rate limit.
 const iceLimiter = rateLimit({ windowMs: 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false });
 const roomLookupLimiter = rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
+const uploadLimiter = rateLimit({ windowMs: 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false });
 
 app.get("/ice", iceLimiter, getIce);
 app.get(`/api/room-exists/:roomId`, roomLookupLimiter, (req, res) => {
   const { roomId } = req.params;
   return res.send(roomsStore.getRoomStatus(store, roomId));
 });
+
+app.get("/api/attachments-status", getAttachmentsStatus);
+app.post("/api/upload-url", uploadLimiter, getUploadUrl);
 
 
 // when client connects
@@ -70,8 +75,8 @@ io.on('connection', socket => {
   // chat room message logic
   socket.on('send-message', (data) => {
     const { roomId } = data;
-    const { message, messageId } = data.message;
-    socket.broadcast.to(roomId).emit('receive-message', { message, messageId, socketId: socket.id });
+    const { message, messageId, attachment } = data.message;
+    socket.broadcast.to(roomId).emit('receive-message', { message, messageId, attachment, socketId: socket.id });
   });
 
   // live caption relay - text only, never persisted

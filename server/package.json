@@ -17,6 +17,8 @@
     "nodemon": "^2.0.20"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.658.1",
+    "@aws-sdk/s3-request-presigner": "^3.658.1",
     "cors": "^2.8.5",
     "cron": "^2.4.3",
     "dotenv": "^16.0.3",
