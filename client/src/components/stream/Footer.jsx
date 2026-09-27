@@ -2,21 +2,20 @@ import React, { useEffect } from "react";
 import { FaMicrophone, FaMicrophoneSlash, FaClosedCaptioning } from "react-icons/fa";
 import { IoVideocam, IoVideocamOff, IoChatboxEllipses } from "react-icons/io5";
 import { BsFillVolumeUpFill, BsFillVolumeMuteFill } from "react-icons/bs";
+import { MdCallEnd } from "react-icons/md";
 import { useMedia } from "../../context/MediaStreamContext";
 import { useNavigate } from "react-router-dom";
 import { ScreenSharingButton } from "./ScreenSharingButton";
 import { connect } from "react-redux";
 import Button from "../ui/Button";
 
-const Footer = ({ onlyWithAudio, chatToggle }) => {
+const Footer = ({ connectOnlyAudio, chatToggle }) => {
   let navigate = useNavigate();
   const {
     mute,
     setMute,
     micMuted,
-    setMicMuted,
     videoOpen,
-    setVideoOpen,
     localStream,
     closeStream,
     toggleAudio,
@@ -35,21 +34,20 @@ const Footer = ({ onlyWithAudio, chatToggle }) => {
 
   //   toggle video track
   const toggleCamera = () => {
-    toggleVideo()
-    setVideoOpen(!videoOpen);
+    toggleVideo(!videoOpen);
   };
 
   // toggle audio track
   const toggleMic = () => {
-    toggleAudio();
-    setMicMuted(!micMuted);
+    toggleAudio(!micMuted);
   };
 
   useEffect(() => {
-    if (onlyWithAudio) {
+    if (connectOnlyAudio) {
       toggleCamera();
     }
-  })
+    // eslint-disable-next-line
+  }, [])
 
   return (
     <>
@@ -90,8 +88,8 @@ const Footer = ({ onlyWithAudio, chatToggle }) => {
               </Button>
             )}
             <Button variant="icon" onClick={chatToggle} title="Chat"><IoChatboxEllipses /></Button>
-            <Button variant='danger' onClick={handleLeave} className="!min-w-[44px] !min-h-[44px] text-gray-100 hover:text-white">
-              Leave
+            <Button variant="danger" onClick={handleLeave} title="Leave call" className="!min-w-[44px] !min-h-[44px] !max-w-fit flex items-center justify-center !p-0 !rounded-full text-white">
+              <MdCallEnd />
             </Button>
           </div>
         </div>

@@ -64,20 +64,25 @@ export const MediaStreamProvider = (props) => {
     livekitHandler.disconnectLiveKitRoom();
   }
 
-  const toggleAudio = () => {
-    const enabled = micMuted ? false : true;
+  // Takes the target state explicitly rather than deriving it from
+  // micMuted/videoOpen - reading those here raced the setState call that
+  // updates them, so the track's actual enabled state was always one
+  // toggle behind what the button showed.
+  const toggleAudio = (nextMicMuted) => {
+    const enabled = !nextMicMuted;
     localStream.getAudioTracks()[0].enabled = enabled;
     if (livekitHandler.isUsingLiveKit()) {
       livekitHandler.setLiveKitMicEnabled(enabled);
     }
+    setMicMuted(nextMicMuted);
   }
 
-  const toggleVideo = () => {
-    const enabled = videoOpen ? true : false;
-    localStream.getVideoTracks()[0].enabled = enabled;
+  const toggleVideo = (nextVideoOpen) => {
+    localStream.getVideoTracks()[0].enabled = nextVideoOpen;
     if (livekitHandler.isUsingLiveKit()) {
-      livekitHandler.setLiveKitCameraEnabled(enabled);
+      livekitHandler.setLiveKitCameraEnabled(nextVideoOpen);
     }
+    setVideoOpen(nextVideoOpen);
   }
 
   const toggleScreenShare = (
