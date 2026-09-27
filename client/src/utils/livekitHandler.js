@@ -222,11 +222,20 @@ export const disconnectLiveKitRoom = () => {
 };
 
 export const setLiveKitCameraEnabled = async (enabled) => {
-    if (room) await room.localParticipant.setCameraEnabled(enabled);
+    if (!room) return;
+    await room.localParticipant.setCameraEnabled(enabled);
+    // Toggling off/on goes through mute/restart internally rather than a
+    // clean unpublish+republish, which doesn't reliably fire
+    // LocalTrackPublished/Unpublished (the room-level listeners above cover
+    // other cases, like screen share, but not this one) - refresh
+    // explicitly right after the operation we know just happened.
+    refreshLocalStream();
 };
 
 export const setLiveKitMicEnabled = async (enabled) => {
-    if (room) await room.localParticipant.setMicrophoneEnabled(enabled);
+    if (!room) return;
+    await room.localParticipant.setMicrophoneEnabled(enabled);
+    refreshLocalStream();
 };
 
 export const setLiveKitScreenShareEnabled = async (enabled) => {
