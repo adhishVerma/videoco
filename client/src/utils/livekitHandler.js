@@ -34,6 +34,21 @@ const dispatchLocalStream = (stream) => {
     window.dispatchEvent(new CustomEvent('catch-local-stream', { detail: { stream } }));
 };
 
+// setCameraEnabled(false) stops the camera track outright (turns the
+// camera light off), and re-enabling publishes a brand new track object -
+// so the local preview's MediaStream, built once after the initial
+// publish, would otherwise keep pointing at a dead track forever after
+// the first toggle off. Rebuild it from whatever's actually published
+// any time that changes.
+const refreshLocalStream = () => {
+    if (!room) return;
+    const tracks = [];
+    room.localParticipant.trackPublications.forEach((publication) => {
+        if (publication.track) tracks.push(publication.track.mediaStreamTrack);
+    });
+    dispatchLocalStream(new MediaStream(tracks));
+};
+
 const dispatchRemoteStreams = () => {
     window.dispatchEvent(new CustomEvent('catch-remote-stream', { detail: { streams: remoteStreams } }));
 };
@@ -137,6 +152,9 @@ export const startLiveKitFlow = async (isRoomHost, identity, roomId, onlyAudio, 
     room.on(RoomEvent.Disconnected, () => {
         usingLiveKit = false;
     });
+
+    room.on(RoomEvent.LocalTrackPublished, refreshLocalStream);
+    room.on(RoomEvent.LocalTrackUnpublished, refreshLocalStream);
 
     try {
         await room.connect(url, token);
