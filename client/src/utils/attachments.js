@@ -15,9 +15,22 @@ export const uploadAttachment = async (file) => {
     const contentType = file.type || 'application/octet-stream';
     const { uploadUrl, fileUrl } = await api.getUploadUrl(file.name, contentType, file.size);
 
-    await axios.put(uploadUrl, file, {
-        headers: { 'Content-Type': contentType },
-    });
+    try {
+        await axios.put(uploadUrl, file, {
+            headers: { 'Content-Type': contentType },
+        });
+    } catch (err) {
+        // This PUT goes straight from the browser to R2, not through our
+        // server - a response-less "Network Error" here (no err.response,
+        // but err.request exists) is the signature of the browser's CORS
+        // check blocking the request, not an actual connectivity problem.
+        // R2's bucket-level CORS policy is a separate setting from this
+        // app's own CLIENT_URL allowlist - see server/.env.example.
+        if (!err.response && err.request) {
+            throw new Error('Upload blocked - the storage bucket needs a CORS policy allowing this site (see server/.env.example under R2_*)');
+        }
+        throw err;
+    }
 
     return {
         url: fileUrl,
