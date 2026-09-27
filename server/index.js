@@ -5,11 +5,7 @@ const { getAttachmentsStatus, getUploadUrl } = require("./controllers/attachment
 const { getLiveKitStatus, createGetTokenHandler } = require("./controllers/livekit");
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
-const job = require('./cron.js');
 const roomsStore = require('./rooms');
-
-// Cron Job to keep the server alive
-job.start();
 
 // comma-separated list of allowed client origins, e.g. "https://videoco.vercel.app,http://localhost:3000"
 const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:3000')

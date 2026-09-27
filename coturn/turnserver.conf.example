@@ -20,12 +20,22 @@ max-port=65535
 use-auth-secret
 static-auth-secret=CHANGE_ME
 
-realm=turn.yourdomain.com
+realm=turn.ballasgang.shop
 
 # TLS cert for turns:// (recommended - some networks only allow TURN over
-# a port that looks like standard HTTPS). Get one with certbot/Let's Encrypt.
-cert=/etc/coturn/certs/fullchain.pem
-pkey=/etc/coturn/certs/privkey.pem
+# a port that looks like standard HTTPS).
+#
+# Deploying via deploy/docker-compose.yml (coturn alongside the app,
+# sharing nginx's certbot-issued cert - turn.ballasgang.shop is a SAN on
+# the api.ballasgang.shop cert, see deploy/init-letsencrypt.sh):
+cert=/etc/coturn/certs/live/api.ballasgang.shop/fullchain.pem
+pkey=/etc/coturn/certs/live/api.ballasgang.shop/privkey.pem
+#
+# Standalone coturn (this directory's own docker-compose.yml, on its own
+# VM) instead mounts ./certs directly - get a cert with `certbot certonly
+# --standalone -d turn.yourdomain.com` and copy/symlink it there, then use:
+# cert=/etc/coturn/certs/fullchain.pem
+# pkey=/etc/coturn/certs/privkey.pem
 
 no-tlsv1
 no-tlsv1_1

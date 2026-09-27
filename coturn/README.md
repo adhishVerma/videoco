@@ -5,6 +5,12 @@ running one small VM. The app server tries this first and only falls back to
 Twilio if `TURN_SERVER_URL` / `TURN_SECRET` aren't set (see
 `server/controllers/getIce.js`).
 
+**Deploying alongside the app on EC2?** `deploy/docker-compose.yml` already
+includes this coturn container - just fill in `turnserver.conf` as below and
+follow `deploy/README.md` instead of the standalone steps here. This
+standalone `docker-compose.yml` is for running coturn on its own, separate
+VM.
+
 ## Requirements
 
 - A VM with a **public, static IP** (Twilio/Render-style PaaS hosting won't
@@ -24,11 +30,16 @@ Twilio if `TURN_SERVER_URL` / `TURN_SECRET` aren't set (see
 1. `cp turnserver.conf.example turnserver.conf`
 2. Fill in `external-ip` (the VM's public IP), `realm` (your domain), and
    `static-auth-secret` (generate one: `openssl rand -hex 32`).
-3. Put your TLS cert/key at `./certs/fullchain.pem` and `./certs/privkey.pem`.
-4. `docker compose up -d`
+3. TLS cert/key: on the combined EC2 deployment (`deploy/`), this is already
+   handled - `turnserver.conf.example`'s cert paths point at the cert nginx's
+   certbot issues (turn.ballasgang.shop is a SAN on it). Standalone, get one
+   yourself (`certbot certonly --standalone -d turn.yourdomain.com`) and put
+   it at `./certs/fullchain.pem` / `./certs/privkey.pem`.
+4. `docker compose up -d` (skip this if deploying via `deploy/` - its
+   compose file already starts coturn alongside the app)
 5. On the app server (`server/.env`), set:
    ```
-   TURN_SERVER_URL=turn.yourdomain.com
+   TURN_SERVER_URL=turn.ballasgang.shop
    TURN_SECRET=<the same static-auth-secret from step 2>
    ```
 
