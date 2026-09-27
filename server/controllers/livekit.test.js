@@ -99,7 +99,7 @@ describe('livekit', () => {
       const { createGetTokenHandler } = require('./livekit');
       const roomsStore = require('../rooms');
       const store = roomsStore.createStore();
-      const { roomId } = createRoom(store, 'host', 'socket-1', 'letmein');
+      const { roomId } = await createRoom(store, 'host', 'socket-1', 'letmein');
       const handler = createGetTokenHandler(roomsStore, store);
       const res = makeRes();
 
@@ -116,7 +116,7 @@ describe('livekit', () => {
       const { createGetTokenHandler } = require('./livekit');
       const roomsStore = require('../rooms');
       const store = roomsStore.createStore();
-      const { roomId } = createRoom(store, 'host', 'socket-1', 'letmein');
+      const { roomId } = await createRoom(store, 'host', 'socket-1', 'letmein');
       const handler = createGetTokenHandler(roomsStore, store);
       const res = makeRes();
 
@@ -137,7 +137,7 @@ describe('livekit', () => {
       const { createGetTokenHandler } = require('./livekit');
       const roomsStore = require('../rooms');
       const store = roomsStore.createStore();
-      const { roomId } = createRoom(store, 'host', 'socket-1');
+      const { roomId } = await createRoom(store, 'host', 'socket-1');
       const handler = createGetTokenHandler(roomsStore, store);
       const res = makeRes();
 

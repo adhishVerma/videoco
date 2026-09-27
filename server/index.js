@@ -61,13 +61,13 @@ io.on('connection', socket => {
 
   // client asks to create a room
   socket.on('create-room', ({ identity, password }) => {
-    createNewRoomHandler(identity, socket, password);
+    createNewRoomHandler(identity, socket, password).catch((err) => console.error('create-room failed', err));
   })
 
   socket.on('join-room', (data) => {
     const { roomId, identity, password } = data;
     if (roomId === null) return
-    joinRoomHandler(roomId, identity, socket, password);
+    joinRoomHandler(roomId, identity, socket, password).catch((err) => console.error('join-room failed', err));
   })
 
   socket.on('conn-signal', (data) => {
@@ -98,9 +98,9 @@ io.on('connection', socket => {
 })
 
 // socket io handlers
-const createNewRoomHandler = (identity, socket, password) => {
+const createNewRoomHandler = async (identity, socket, password) => {
 
-  const { roomId: newRoomId, room: newRoom } = roomsStore.createRoom(store, identity, socket.id, password);
+  const { roomId: newRoomId, room: newRoom } = await roomsStore.createRoom(store, identity, socket.id, password);
 
   // joining the new room
   socket.join(newRoomId);
@@ -112,9 +112,9 @@ const createNewRoomHandler = (identity, socket, password) => {
   socket.emit('room-update', { connectedUsers: newRoom.connectedUsers })
 }
 
-const joinRoomHandler = (roomId, identity, socket, password) => {
+const joinRoomHandler = async (roomId, identity, socket, password) => {
 
-  const result = roomsStore.joinRoom(store, roomId, identity, socket.id, password);
+  const result = await roomsStore.joinRoom(store, roomId, identity, socket.id, password);
   if (result.error) {
     socket.emit('join-error', { reason: result.error });
     return;

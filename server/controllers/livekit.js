@@ -32,7 +32,7 @@ const createGetTokenHandler = (roomsStore, store) => async (req, res) => {
     // over the socket - the LiveKit token is a second, independent grant and
     // shouldn't be handed out to someone who never proved they knew the
     // password, if the socket layer is ever bypassed.
-    const access = roomsStore.checkRoomAccess(store, roomId, password);
+    const access = await roomsStore.checkRoomAccess(store, roomId, password);
     if (access.error) {
         const status = access.error === 'invalid-password' ? 403 : 404;
         return res.status(status).json({ error: access.error });

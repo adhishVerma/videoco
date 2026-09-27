@@ -17,39 +17,39 @@ describe('rooms store', () => {
     expect(getRoomStatus(store, 'missing-room')).toEqual({ roomExists: false });
   });
 
-  it('creates a room with its host as the first participant', () => {
-    const { roomId, user, room } = createRoom(store, 'host', 'socket-1');
+  it('creates a room with its host as the first participant', async () => {
+    const { roomId, user, room } = await createRoom(store, 'host', 'socket-1');
 
     expect(room.connectedUsers).toEqual([user]);
     expect(user.identity).toBe('host');
     expect(getRoomStatus(store, roomId)).toEqual({ roomExists: true, full: false, passwordProtected: false });
   });
 
-  it('lets a second user join an existing room', () => {
-    const { roomId } = createRoom(store, 'host', 'socket-1');
+  it('lets a second user join an existing room', async () => {
+    const { roomId } = await createRoom(store, 'host', 'socket-1');
 
-    const result = joinRoom(store, roomId, 'guest', 'socket-2');
+    const result = await joinRoom(store, roomId, 'guest', 'socket-2');
 
     expect(result.room.connectedUsers).toHaveLength(2);
     expect(result.room.connectedUsers[1].identity).toBe('guest');
   });
 
-  it('returns a not-found error when joining a room that does not exist', () => {
-    expect(joinRoom(store, 'no-such-room', 'guest', 'socket-2')).toEqual({ error: 'not-found' });
+  it('returns a not-found error when joining a room that does not exist', async () => {
+    expect(await joinRoom(store, 'no-such-room', 'guest', 'socket-2')).toEqual({ error: 'not-found' });
   });
 
-  it('marks a room full once it has more than 4 participants', () => {
-    const { roomId } = createRoom(store, 'host', 'socket-1');
-    joinRoom(store, roomId, 'guest-2', 'socket-2');
-    joinRoom(store, roomId, 'guest-3', 'socket-3');
-    joinRoom(store, roomId, 'guest-4', 'socket-4');
+  it('marks a room full once it has more than 4 participants', async () => {
+    const { roomId } = await createRoom(store, 'host', 'socket-1');
+    await joinRoom(store, roomId, 'guest-2', 'socket-2');
+    await joinRoom(store, roomId, 'guest-3', 'socket-3');
+    await joinRoom(store, roomId, 'guest-4', 'socket-4');
 
     expect(getRoomStatus(store, roomId)).toEqual({ roomExists: true, full: true, passwordProtected: false });
   });
 
-  it('removes a user on disconnect but keeps the room open for the rest', () => {
-    const { roomId } = createRoom(store, 'host', 'socket-1');
-    joinRoom(store, roomId, 'guest', 'socket-2');
+  it('removes a user on disconnect but keeps the room open for the rest', async () => {
+    const { roomId } = await createRoom(store, 'host', 'socket-1');
+    await joinRoom(store, roomId, 'guest', 'socket-2');
 
     const result = disconnectUser(store, 'socket-2');
 
@@ -58,8 +58,8 @@ describe('rooms store', () => {
     expect(result.room.connectedUsers[0].identity).toBe('host');
   });
 
-  it('closes the room once its last participant disconnects', () => {
-    const { roomId } = createRoom(store, 'host', 'socket-1');
+  it('closes the room once its last participant disconnects', async () => {
+    const { roomId } = await createRoom(store, 'host', 'socket-1');
 
     const result = disconnectUser(store, 'socket-1');
 
@@ -72,39 +72,39 @@ describe('rooms store', () => {
   });
 
   describe('password-protected rooms', () => {
-    it('reports passwordProtected in room status', () => {
-      const { roomId } = createRoom(store, 'host', 'socket-1', 'letmein');
+    it('reports passwordProtected in room status', async () => {
+      const { roomId } = await createRoom(store, 'host', 'socket-1', 'letmein');
 
       expect(getRoomStatus(store, roomId)).toEqual({ roomExists: true, full: false, passwordProtected: true });
     });
 
-    it('lets a guest join with the correct password', () => {
-      const { roomId } = createRoom(store, 'host', 'socket-1', 'letmein');
+    it('lets a guest join with the correct password', async () => {
+      const { roomId } = await createRoom(store, 'host', 'socket-1', 'letmein');
 
-      const result = joinRoom(store, roomId, 'guest', 'socket-2', 'letmein');
+      const result = await joinRoom(store, roomId, 'guest', 'socket-2', 'letmein');
 
       expect(result.error).toBeUndefined();
       expect(result.room.connectedUsers).toHaveLength(2);
     });
 
-    it('rejects a guest with the wrong password', () => {
-      const { roomId } = createRoom(store, 'host', 'socket-1', 'letmein');
+    it('rejects a guest with the wrong password', async () => {
+      const { roomId } = await createRoom(store, 'host', 'socket-1', 'letmein');
 
-      const result = joinRoom(store, roomId, 'guest', 'socket-2', 'wrong-password');
-
-      expect(result).toEqual({ error: 'invalid-password' });
-    });
-
-    it('rejects a guest who supplies no password at all', () => {
-      const { roomId } = createRoom(store, 'host', 'socket-1', 'letmein');
-
-      const result = joinRoom(store, roomId, 'guest', 'socket-2');
+      const result = await joinRoom(store, roomId, 'guest', 'socket-2', 'wrong-password');
 
       expect(result).toEqual({ error: 'invalid-password' });
     });
 
-    it('never stores the plaintext password on the room', () => {
-      const { room } = createRoom(store, 'host', 'socket-1', 'letmein');
+    it('rejects a guest who supplies no password at all', async () => {
+      const { roomId } = await createRoom(store, 'host', 'socket-1', 'letmein');
+
+      const result = await joinRoom(store, roomId, 'guest', 'socket-2');
+
+      expect(result).toEqual({ error: 'invalid-password' });
+    });
+
+    it('never stores the plaintext password on the room', async () => {
+      const { room } = await createRoom(store, 'host', 'socket-1', 'letmein');
 
       expect(room.passwordHash).not.toBe('letmein');
       expect(room.passwordHash).toContain(':');
