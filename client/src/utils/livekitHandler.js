@@ -112,7 +112,13 @@ export const startLiveKitFlow = async (isRoomHost, identity, roomId, onlyAudio, 
         return;
     }
 
-    const { token, url } = await api.getLiveKitToken(resolvedRoomId, identity, socket.id, roomPassword);
+    let token, url;
+    try {
+        ({ token, url } = await api.getLiveKitToken(resolvedRoomId, identity, socket.id, roomPassword));
+    } catch (err) {
+        usingLiveKit = false;
+        throw new CallConnectionError('Failed to get a call token from the server', err);
+    }
 
     room = new Room();
 
@@ -132,18 +138,41 @@ export const startLiveKitFlow = async (isRoomHost, identity, roomId, onlyAudio, 
         usingLiveKit = false;
     });
 
-    await room.connect(url, token);
+    try {
+        await room.connect(url, token);
+    } catch (err) {
+        usingLiveKit = false;
+        throw new CallConnectionError('Failed to connect to the LiveKit server', err);
+    }
 
-    const localTracks = await createLocalTracks({
-        audio: true,
-        video: onlyAudio ? false : { width: 480, height: 360 },
-    });
+    // getUserMedia genuinely failing (permission denied, no device, device
+    // busy) only happens here - keep this in its own try/catch so it's the
+    // only path that reports a camera/mic problem to the user. Anything
+    // above this point (token fetch, WebSocket connect) is a connection
+    // problem, not a permissions one, and reports as such instead.
+    let localTracks;
+    try {
+        localTracks = await createLocalTracks({
+            audio: true,
+            video: onlyAudio ? false : { width: 480, height: 360 },
+        });
+    } catch (err) {
+        room.disconnect();
+        room = null;
+        usingLiveKit = false;
+        throw err;
+    }
 
     const localStream = new MediaStream(localTracks.map((t) => t.mediaStreamTrack));
     dispatchLocalStream(localStream);
 
-    for (const track of localTracks) {
-        await room.localParticipant.publishTrack(track);
+    try {
+        for (const track of localTracks) {
+            await room.localParticipant.publishTrack(track);
+        }
+    } catch (err) {
+        usingLiveKit = false;
+        throw new CallConnectionError('Failed to publish local tracks to the call', err);
     }
 
     // pick up anyone already in the room when we joined
@@ -153,6 +182,17 @@ export const startLiveKitFlow = async (isRoomHost, identity, roomId, onlyAudio, 
         });
     });
 };
+
+// distinguishes "we couldn't reach/use the call server" from an actual
+// getUserMedia permission/device failure, so the UI can show an accurate
+// message instead of always blaming the camera/mic.
+export class CallConnectionError extends Error {
+    constructor(message, cause) {
+        super(message);
+        this.name = 'CallConnectionError';
+        this.cause = cause;
+    }
+}
 
 export const disconnectLiveKitRoom = () => {
     if (room) {

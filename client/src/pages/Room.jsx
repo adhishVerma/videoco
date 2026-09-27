@@ -26,16 +26,26 @@ const Room = ({ roomId, identity, isRoomHost, connectOnlyAudio, roomPassword }) 
       navigate('/join-room');
     }
 
-    const handleMediaAccessError = () => {
-      toast.error('Could not access your camera/microphone. Check browser permissions and try again.', { position: "bottom-right" });
+    const handleMediaAccessError = (event) => {
+      const err = event.detail?.error;
+      console.error('media access error', err?.name, err?.message, err);
+      const reason = err?.name ? ` (${err.name})` : '';
+      toast.error(`Could not access your camera/microphone${reason}. Check browser permissions and try again.`, { position: "bottom-right" });
+    }
+
+    const handleCallConnectionError = (event) => {
+      console.error('call connection error', event.detail.error, event.detail.error.cause || '');
+      toast.error('Could not connect to the call server. Check your connection and try again.', { position: "bottom-right" });
     }
 
     window.addEventListener('join-error', handleJoinError);
     window.addEventListener('media-access-error', handleMediaAccessError);
+    window.addEventListener('call-connection-error', handleCallConnectionError);
 
     return () => {
       window.removeEventListener('join-error', handleJoinError);
       window.removeEventListener('media-access-error', handleMediaAccessError);
+      window.removeEventListener('call-connection-error', handleCallConnectionError);
     }
     // eslint-disable-next-line
   }, []);
