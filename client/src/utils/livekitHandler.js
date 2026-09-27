@@ -38,15 +38,38 @@ const dispatchLocalStream = (stream) => {
 // camera light off), and re-enabling publishes a brand new track object -
 // so the local preview's MediaStream, built once after the initial
 // publish, would otherwise keep pointing at a dead track forever after
-// the first toggle off. Rebuild it from whatever's actually published
-// any time that changes.
+// the first toggle off. Rebuild it from whatever's actually published any
+// time that changes. Skips re-dispatching when nothing actually changed
+// (same track ids + readyStates) so the polling helper below doesn't
+// spam the local preview with identical MediaStream objects every 150ms.
+let lastLocalTrackSignature = '';
 const refreshLocalStream = () => {
     if (!room) return;
     const tracks = [];
     room.localParticipant.trackPublications.forEach((publication) => {
         if (publication.track) tracks.push(publication.track.mediaStreamTrack);
     });
+    const signature = tracks.map((t) => `${t.id}:${t.readyState}`).join(',');
+    if (signature === lastLocalTrackSignature) return;
+    lastLocalTrackSignature = signature;
     dispatchLocalStream(new MediaStream(tracks));
+};
+
+// setCameraEnabled/setMicrophoneEnabled's own promise can resolve before
+// LiveKit's internal track-restart (reacquiring the camera/mic hardware
+// after a mute) has actually swapped the new MediaStreamTrack into the
+// publication - refreshing exactly once right after can grab a track
+// that's still ended/stale. Keep sampling briefly instead of trusting a
+// single point in time; refreshLocalStream's own dedup keeps this from
+// causing extra re-renders once the track has actually stabilized.
+const pollLocalStreamUntilStable = () => {
+    let attempts = 0;
+    const tick = () => {
+        refreshLocalStream();
+        attempts += 1;
+        if (attempts < 10) setTimeout(tick, 150);
+    };
+    tick();
 };
 
 const dispatchRemoteStreams = () => {
@@ -177,10 +200,10 @@ export const startLiveKitFlow = async (isRoomHost, identity, roomId, onlyAudio, 
     // setLiveKitMicEnabled below) and, critically, a remote participant's
     // toggle, which nothing else here was listening for at all.
     room.on(RoomEvent.TrackMuted, (publication, participant) => {
-        participant.isLocal ? refreshLocalStream() : refreshRemoteParticipant(participant.identity);
+        participant.isLocal ? pollLocalStreamUntilStable() : refreshRemoteParticipant(participant.identity);
     });
     room.on(RoomEvent.TrackUnmuted, (publication, participant) => {
-        participant.isLocal ? refreshLocalStream() : refreshRemoteParticipant(participant.identity);
+        participant.isLocal ? pollLocalStreamUntilStable() : refreshRemoteParticipant(participant.identity);
     });
 
     try {
@@ -254,15 +277,16 @@ export const setLiveKitCameraEnabled = async (enabled) => {
     // Toggling off/on goes through mute/restart internally rather than a
     // clean unpublish+republish, which doesn't reliably fire
     // LocalTrackPublished/Unpublished (the room-level listeners above cover
-    // other cases, like screen share, but not this one) - refresh
-    // explicitly right after the operation we know just happened.
-    refreshLocalStream();
+    // other cases, like screen share, but not this one), and the restart
+    // itself can still be finishing after this await resolves - poll
+    // briefly rather than trusting a single refresh right here.
+    pollLocalStreamUntilStable();
 };
 
 export const setLiveKitMicEnabled = async (enabled) => {
     if (!room) return;
     await room.localParticipant.setMicrophoneEnabled(enabled);
-    refreshLocalStream();
+    pollLocalStreamUntilStable();
 };
 
 export const setLiveKitScreenShareEnabled = async (enabled) => {
