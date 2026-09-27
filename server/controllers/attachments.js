@@ -27,6 +27,15 @@ const getR2Client = () => {
             accessKeyId: process.env.R2_ACCESS_KEY_ID,
             secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
         },
+        // Recent AWS SDK v3 versions default to attaching a CRC32 checksum
+        // requirement to every request (including presigned URLs), baked
+        // into the signed query string as x-amz-checksum-crc32 /
+        // x-amz-sdk-checksum-algorithm. R2 doesn't implement that AWS-
+        // specific extension the same way S3 does, so a plain PUT that
+        // doesn't send a matching checksum header fails signature
+        // validation with an auth/InvalidArgument error. Only attach a
+        // checksum when the operation actually requires one.
+        requestChecksumCalculation: 'WHEN_REQUIRED',
     });
 };
 

@@ -77,6 +77,19 @@ const upsertRemoteTrack = (participantId, track) => {
     dispatchRemoteStreams();
 };
 
+// A remote participant toggling their camera/mic goes through the same
+// mute/restart mechanism as the local side (see refreshLocalStream) - it
+// fires TrackMuted/TrackUnmuted, not TrackSubscribed/Unsubscribed, so
+// without this a peer's video would freeze on the last frame and never
+// come back once they toggled it off and on again.
+const refreshRemoteParticipant = (participantId) => {
+    const participant = room?.remoteParticipants.get(participantId);
+    if (!participant) return;
+    participant.trackPublications.forEach((publication) => {
+        if (publication.track) upsertRemoteTrack(participantId, publication.track);
+    });
+};
+
 const removeRemoteParticipant = (participantId) => {
     delete remoteMediaStreams[participantId];
     remoteStreams = remoteStreams.filter((s) => s.id !== participantId);
@@ -155,6 +168,20 @@ export const startLiveKitFlow = async (isRoomHost, identity, roomId, onlyAudio, 
 
     room.on(RoomEvent.LocalTrackPublished, refreshLocalStream);
     room.on(RoomEvent.LocalTrackUnpublished, refreshLocalStream);
+
+    // The actual mechanism a camera/mic toggle uses - mute() typically
+    // stops the underlying hardware track (turns the camera light off)
+    // without unpublishing, and unmute() restarts it with a new
+    // MediaStreamTrack under the same publication. Covers both our own
+    // toggle (backing up the explicit refresh in setLiveKitCameraEnabled/
+    // setLiveKitMicEnabled below) and, critically, a remote participant's
+    // toggle, which nothing else here was listening for at all.
+    room.on(RoomEvent.TrackMuted, (publication, participant) => {
+        participant.isLocal ? refreshLocalStream() : refreshRemoteParticipant(participant.identity);
+    });
+    room.on(RoomEvent.TrackUnmuted, (publication, participant) => {
+        participant.isLocal ? refreshLocalStream() : refreshRemoteParticipant(participant.identity);
+    });
 
     try {
         await room.connect(url, token);
