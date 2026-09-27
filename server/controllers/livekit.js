@@ -1,5 +1,4 @@
 const { AccessToken } = require('livekit-server-sdk');
-require('dotenv').config();
 
 const TOKEN_TTL = '10m';
 

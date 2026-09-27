@@ -1,7 +1,6 @@
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { v4: uuidv4 } = require('uuid');
-require('dotenv').config();
 
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25MB
 const UPLOAD_URL_TTL_SECONDS = 5 * 60;

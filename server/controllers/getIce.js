@@ -1,6 +1,5 @@
 const crypto = require('crypto');
 const twilio = require('twilio')
-require('dotenv').config();
 
 const TURN_CREDENTIAL_TTL_SECONDS = 60 * 60;
 

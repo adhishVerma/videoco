@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const { getIce } = require("./controllers/getIce");
 const { getAttachmentsStatus, getUploadUrl } = require("./controllers/attachments");
