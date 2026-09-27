@@ -2,7 +2,7 @@
 
 The frontend stays on Vercel. This covers moving just the backend (Express +
 Socket.IO server, plus the optional self-hosted TURN server) to your own EC2
-instance, reachable at `api.ballasgang.shop` (and `turn.ballasgang.shop` for
+instance, reachable at `videoco.ballasgang.shop` (and `turn.ballasgang.shop` for
 TURN).
 
 ## 1. Launch the EC2 instance
@@ -33,7 +33,7 @@ at the EC2 instance's Elastic IP:
 
 | Type | Name | Value |
 |---|---|---|
-| A | `api` | `<your Elastic IP>` |
+| A | `videoco` | `<your Elastic IP>` |
 | A | `turn` | `<your Elastic IP>` |
 
 Give DNS a few minutes to propagate before running `init-letsencrypt.sh`
@@ -86,7 +86,7 @@ nano init-letsencrypt.sh   # set the `email` variable near the top
 ./init-letsencrypt.sh
 ```
 
-This issues one certificate covering both `api.ballasgang.shop` and
+This issues one certificate covering both `videoco.ballasgang.shop` and
 `turn.ballasgang.shop` (nginx uses it for HTTPS/WSS; coturn reads the same
 files directly for `turns://`). Renewal happens automatically afterward via
 the `certbot` service in `docker-compose.yml` - nothing to schedule
@@ -104,8 +104,8 @@ TLS termination), `certbot` (renewal loop), and `coturn` (if configured).
 ## 7. Verify
 
 ```bash
-curl https://api.ballasgang.shop/api/attachments-status
-curl https://api.ballasgang.shop/api/livekit-status
+curl https://videoco.ballasgang.shop/api/attachments-status
+curl https://videoco.ballasgang.shop/api/livekit-status
 ```
 
 Both should return JSON, not a connection error or a cert warning. For TURN,
@@ -118,7 +118,7 @@ a `relay` candidate.
 In the Vercel project's settings → Environment Variables, set:
 
 ```
-REACT_APP_BACKEND_URL=https://api.ballasgang.shop
+REACT_APP_BACKEND_URL=https://videoco.ballasgang.shop
 ```
 
 then redeploy the frontend (Vercel → Deployments → Redeploy, or push a

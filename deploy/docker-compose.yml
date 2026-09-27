@@ -40,7 +40,7 @@ services:
   # self-hosted TURN (coturn) - see ../coturn/README.md for the one-time
   # turnserver.conf setup. Host networking is required so it can bind the
   # whole UDP relay port range without mapping each one. TLS cert is the
-  # same one nginx uses (turn.ballasgang.shop is a SAN on the api.* cert,
+  # same one nginx uses (turn.ballasgang.shop is a SAN on the videoco.* cert,
   # see init-letsencrypt.sh) - coturn reads it directly, it never talks to
   # nginx.
   coturn:

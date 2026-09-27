@@ -27,9 +27,9 @@ realm=turn.ballasgang.shop
 #
 # Deploying via deploy/docker-compose.yml (coturn alongside the app,
 # sharing nginx's certbot-issued cert - turn.ballasgang.shop is a SAN on
-# the api.ballasgang.shop cert, see deploy/init-letsencrypt.sh):
-cert=/etc/coturn/certs/live/api.ballasgang.shop/fullchain.pem
-pkey=/etc/coturn/certs/live/api.ballasgang.shop/privkey.pem
+# the videoco.ballasgang.shop cert, see deploy/init-letsencrypt.sh):
+cert=/etc/coturn/certs/live/videoco.ballasgang.shop/fullchain.pem
+pkey=/etc/coturn/certs/live/videoco.ballasgang.shop/privkey.pem
 #
 # Standalone coturn (this directory's own docker-compose.yml, on its own
 # VM) instead mounts ./certs directly - get a cert with `certbot certonly

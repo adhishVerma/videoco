@@ -11,7 +11,7 @@
 
 set -e
 
-domains=(api.ballasgang.shop turn.ballasgang.shop)
+domains=(videoco.ballasgang.shop turn.ballasgang.shop)
 rsa_key_size=4096
 data_path="./certbot"
 email="" # set your email below for renewal notices, e.g. "you@example.com"
