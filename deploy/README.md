@@ -86,22 +86,42 @@ nano init-letsencrypt.sh   # set the `email` variable near the top
 ./init-letsencrypt.sh
 ```
 
-This issues one certificate covering both `videoco.ballasgang.shop` and
+This issues **one certificate covering both** `videoco.ballasgang.shop` and
 `turn.ballasgang.shop` (nginx uses it for HTTPS/WSS; coturn reads the same
-files directly for `turns://`). Renewal happens automatically afterward via
-the `certbot` service in `docker-compose.yml` - nothing to schedule
-yourself.
+files directly for `turns://`), and leaves nginx running against it when it's
+done. The script is safe to re-run - if a real certificate already exists it
+just re-verifies nginx and reloads, it never deletes or re-requests a
+working cert.
 
-## 6. Start everything
+## 6. Start everything else
 
 ```bash
-docker compose up -d --build
+docker compose up -d --build app coturn
 ```
 
-This builds and starts `app` (the Node server), `nginx` (reverse proxy +
-TLS termination), `certbot` (renewal loop), and `coturn` (if configured).
+(nginx is already running from step 5; this builds and starts the Node
+server and, if configured, coturn. The `certbot` entry in
+`docker-compose.yml` is intentionally not a long-running service - it's
+invoked on demand by `init-letsencrypt.sh` and `renew.sh`, so leave it out
+of `up`.)
 
-## 7. Verify
+## 7. Set up certificate renewal
+
+```bash
+crontab -e
+```
+
+Add:
+```cron
+0 */12 * * * cd /home/ubuntu/videoco/deploy && ./renew.sh >> /home/ubuntu/videoco-renew.log 2>&1
+```
+
+`renew.sh` runs `certbot renew` (a safe no-op until a cert is within 30
+days of expiry) and reloads nginx + restarts coturn **only if a renewal
+actually happened** - not on every run. Adjust the path if you cloned
+somewhere other than `/home/ubuntu/videoco`.
+
+## 8. Verify
 
 ```bash
 curl https://videoco.ballasgang.shop/api/attachments-status
@@ -113,7 +133,9 @@ use the [Trickle ICE test page](https://webrtc.github.io/samples/src/content/pee
 with `turns:turn.ballasgang.shop:5349` and your credentials - you should see
 a `relay` candidate.
 
-## 8. Point Vercel at the new backend
+See **Troubleshooting** below for a fuller set of verification commands.
+
+## 9. Point Vercel at the new backend
 
 In the Vercel project's settings → Environment Variables, set:
 
@@ -140,7 +162,56 @@ docker compose logs -f nginx
 docker compose logs -f coturn
 ```
 
-**Restart everything:**
+**Restart everything** (skips `certbot`, which isn't meant to stay running):
 ```bash
-docker compose restart
+docker compose restart app nginx coturn
 ```
+
+## Troubleshooting
+
+**Check what's running:**
+```bash
+docker ps
+```
+
+**nginx logs / config check:**
+```bash
+docker logs videoco-nginx --tail 100
+docker compose exec nginx nginx -t
+docker compose exec nginx nginx -s reload
+```
+
+**HTTP/HTTPS reachability:**
+```bash
+curl -I http://videoco.ballasgang.shop
+curl -I https://videoco.ballasgang.shop
+curl -I https://turn.ballasgang.shop
+```
+
+**Inspect the certificate** (subject, issuer, validity dates, and which
+domains it actually covers):
+```bash
+openssl x509 -in certbot/conf/live/videoco.ballasgang.shop/fullchain.pem -noout -subject -issuer -dates
+openssl x509 -in certbot/conf/live/videoco.ballasgang.shop/fullchain.pem -noout -ext subjectAltName
+```
+The second command should show both `DNS:videoco.ballasgang.shop` and
+`DNS:turn.ballasgang.shop`.
+
+**Test renewal without actually renewing anything:**
+```bash
+docker compose run --rm certbot certonly --webroot -w /var/www/certbot --dry-run -d videoco.ballasgang.shop -d turn.ballasgang.shop
+```
+
+**certbot logs (from the last manual/cron renewal run):**
+```bash
+cat videoco-renew.log   # or wherever you pointed the cron job's output
+```
+
+**If nginx won't start at all**, it's almost always one of:
+- The cert files referenced in `nginx/videoco.conf` don't exist yet - run
+  `init-letsencrypt.sh` first, it creates a dummy cert specifically so this
+  doesn't happen.
+- `options-ssl-nginx.conf` / `ssl-dhparam.pem` are missing or empty in
+  `certbot/conf/` - `init-letsencrypt.sh` fetches these from inside the
+  certbot image; if that step was interrupted, delete the two files and
+  re-run the script to fetch them again.
