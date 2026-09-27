@@ -70,17 +70,22 @@ export const MediaStreamProvider = (props) => {
   // toggle behind what the button showed.
   const toggleAudio = (nextMicMuted) => {
     const enabled = !nextMicMuted;
-    localStream.getAudioTracks()[0].enabled = enabled;
+    // LiveKit owns the published track's lifecycle (it may stop/replace it
+    // outright) - toggling the raw track here would fight that, and on the
+    // mesh path there's no LiveKit track to manage at all.
     if (livekitHandler.isUsingLiveKit()) {
       livekitHandler.setLiveKitMicEnabled(enabled);
+    } else {
+      localStream.getAudioTracks()[0].enabled = enabled;
     }
     setMicMuted(nextMicMuted);
   }
 
   const toggleVideo = (nextVideoOpen) => {
-    localStream.getVideoTracks()[0].enabled = nextVideoOpen;
     if (livekitHandler.isUsingLiveKit()) {
       livekitHandler.setLiveKitCameraEnabled(nextVideoOpen);
+    } else {
+      localStream.getVideoTracks()[0].enabled = nextVideoOpen;
     }
     setVideoOpen(nextVideoOpen);
   }
