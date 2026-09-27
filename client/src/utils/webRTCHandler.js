@@ -1,6 +1,7 @@
 import { fetchTURNCredentials, getTurnIceServers } from './turn';
 import * as wss from './wss';
 import * as livekitHandler from './livekitHandler';
+import { CallConnectionError } from './livekitHandler';
 import Peer from 'simple-peer';
 
 
@@ -31,9 +32,9 @@ export const getLocalPreviewAndInitRoomConnection = async (
         try {
             await livekitHandler.startLiveKitFlow(isRoomHost, identity, roomId, onlyAudio, roomPassword);
         } catch (err) {
-            console.log('LiveKit connection failed', err);
-            const event = new CustomEvent('media-access-error', { detail: { error: err } });
-            window.dispatchEvent(event);
+            console.log('LiveKit connection failed', err, err.cause || '');
+            const eventName = err instanceof CallConnectionError ? 'call-connection-error' : 'media-access-error';
+            window.dispatchEvent(new CustomEvent(eventName, { detail: { error: err } }));
         }
         return;
     }
