@@ -1,0 +1,45 @@
+# coturn config for videoco. Copy to turnserver.conf, fill in the values
+# below, and put a TLS cert/key in ./certs before starting the container.
+
+listening-port=3478
+tls-listening-port=5349
+
+listening-ip=0.0.0.0
+relay-ip=0.0.0.0
+
+# the VM's public IP (or the DNS name below resolved once at boot)
+external-ip=YOUR_SERVER_PUBLIC_IP
+
+# relayed media uses one port per active connection out of this range -
+# your cloud firewall/security group must allow inbound UDP across it
+min-port=49152
+max-port=65535
+
+# time-limited credentials: same secret as the server's TURN_SECRET env var.
+# generate one with: openssl rand -hex 32
+use-auth-secret
+static-auth-secret=CHANGE_ME
+
+realm=turn.ballasgang.shop
+
+# TLS cert for turns:// (recommended - some networks only allow TURN over
+# a port that looks like standard HTTPS).
+#
+# Deploying via deploy/docker-compose.yml (coturn alongside the app,
+# sharing nginx's certbot-issued cert - turn.ballasgang.shop is a SAN on
+# the videoco.ballasgang.shop cert, see deploy/init-letsencrypt.sh):
+cert=/etc/coturn/certs/live/videoco.ballasgang.shop/fullchain.pem
+pkey=/etc/coturn/certs/live/videoco.ballasgang.shop/privkey.pem
+#
+# Standalone coturn (this directory's own docker-compose.yml, on its own
+# VM) instead mounts ./certs directly - get a cert with `certbot certonly
+# --standalone -d turn.yourdomain.com` and copy/symlink it there, then use:
+# cert=/etc/coturn/certs/fullchain.pem
+# pkey=/etc/coturn/certs/privkey.pem
+
+no-tlsv1
+no-tlsv1_1
+no-multicast-peers
+no-cli
+fingerprint
+log-file=stdout

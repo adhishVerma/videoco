@@ -1,45 +1,54 @@
+require('dotenv').config();
 const express = require('express');
 const { getIce } = require("./controllers/getIce");
+const { getAttachmentsStatus, getUploadUrl } = require("./controllers/attachments");
+const { getLiveKitStatus, createGetTokenHandler } = require("./controllers/livekit");
 const cors = require('cors');
-const { v4: uuidv4 } = require('uuid');
-const job = require('./cron.js');
+const rateLimit = require('express-rate-limit');
+const roomsStore = require('./rooms');
 
-// Cron Job to keep the server alive
-job.start();
+// comma-separated list of allowed client origins, e.g. "https://videoco.vercel.app,http://localhost:3000"
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:3000')
+  .split(',')
+  .map((origin) => origin.trim());
+
+const corsOptions = {
+  origin: allowedOrigins,
+  methods: ["GET", "POST"]
+};
 
 const app = express()
 const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ["GET", "POST"]
-  }
+  cors: corsOptions
 });
 
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
-let connectedUsers = [];
-let rooms = []
+const store = roomsStore.createStore();
 
-app.get("/ice", getIce);
-app.get(`/api/room-exists/:roomId`, (req, res) => {
+// TURN credentials mint a real (billed) Twilio resource, and room-exists is a
+// cheap enumeration target - both get a conservative per-IP rate limit.
+const iceLimiter = rateLimit({ windowMs: 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false });
+const roomLookupLimiter = rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
+const uploadLimiter = rateLimit({ windowMs: 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false });
+const livekitTokenLimiter = rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
+
+app.get("/ice", iceLimiter, getIce);
+app.get(`/api/room-exists/:roomId`, roomLookupLimiter, (req, res) => {
   const { roomId } = req.params;
-  const room = rooms.find((room) => room.id === roomId);
-
-  if (room) {
-    if (room.connectedUsers.length > 3) {
-      return res.send({ roomExists: true, full: true });
-    } else {
-      return res.send({ roomExists: true, full: false });
-    }
-  } else {
-    return res.send({ roomExists: false });
-  }
+  return res.send(roomsStore.getRoomStatus(store, roomId));
 });
+
+app.get("/api/attachments-status", getAttachmentsStatus);
+app.post("/api/upload-url", uploadLimiter, getUploadUrl);
+
+app.get("/api/livekit-status", getLiveKitStatus);
+app.post("/api/livekit-token", livekitTokenLimiter, createGetTokenHandler(roomsStore, store));
 
 
 // when client connects
@@ -47,14 +56,14 @@ io.on('connection', socket => {
   console.log('client-connected', socket.id)
 
   // client asks to create a room
-  socket.on('create-room', ({ identity }) => {
-    createNewRoomHandler(identity, socket);
+  socket.on('create-room', ({ identity, password }) => {
+    createNewRoomHandler(identity, socket, password).catch((err) => console.error('create-room failed', err));
   })
 
   socket.on('join-room', (data) => {
-    const { roomId, identity } = data;
+    const { roomId, identity, password } = data;
     if (roomId === null) return
-    joinRoomHandler(roomId, identity, socket);
+    joinRoomHandler(roomId, identity, socket, password).catch((err) => console.error('join-room failed', err));
   })
 
   socket.on('conn-signal', (data) => {
@@ -68,8 +77,14 @@ io.on('connection', socket => {
   // chat room message logic
   socket.on('send-message', (data) => {
     const { roomId } = data;
-    const { message, messageId } = data.message;
-    socket.broadcast.to(roomId).emit('receive-message', { message, messageId, socketId: socket.id });
+    const { message, messageId, attachment } = data.message;
+    socket.broadcast.to(roomId).emit('receive-message', { message, messageId, attachment, socketId: socket.id });
+  });
+
+  // live caption relay - text only, never persisted
+  socket.on('send-caption', (data) => {
+    const { roomId, text } = data;
+    socket.broadcast.to(roomId).emit('receive-caption', { text, socketId: socket.id });
   });
 
   // user disconnect
@@ -79,55 +94,31 @@ io.on('connection', socket => {
 })
 
 // socket io handlers
-const createNewRoomHandler = (identity, socket) => {
+const createNewRoomHandler = async (identity, socket, password) => {
 
-  const roomId = uuidv4();
+  const { roomId: newRoomId, room: newRoom } = await roomsStore.createRoom(store, identity, socket.id, password);
 
-  // creating a new User
-  const newUser = {
-    identity,
-    id: uuidv4(),
-    socketId: socket.id,
-    roomId
-  }
-  connectedUsers.push(newUser); //push the user to connectedUsers.
-
-  const newRoom = {
-    id: roomId,
-    connectedUsers: [newUser]
-  }
   // joining the new room
-  socket.join(roomId);
-
-  rooms = [...rooms, newRoom];
-  console.log("pushed-room", rooms)
-
+  socket.join(newRoomId);
 
   // emit to the client which created the room
-  socket.emit('room-id', { roomId });
+  socket.emit('room-id', { roomId: newRoomId });
 
   // emit event to all users connected, about new users
   socket.emit('room-update', { connectedUsers: newRoom.connectedUsers })
 }
 
-const joinRoomHandler = (roomId, identity, socket) => {
+const joinRoomHandler = async (roomId, identity, socket, password) => {
 
-  const newUser = {
-    identity,
-    id: uuidv4(),
-    socketId: socket.id,
-    roomId
+  const result = await roomsStore.joinRoom(store, roomId, identity, socket.id, password);
+  if (result.error) {
+    socket.emit('join-error', { reason: result.error });
+    return;
   }
-
-  // adding user to the room arr
-  const room = rooms.find((room) => room.id === roomId);
-  room.connectedUsers = [...room.connectedUsers, newUser];
+  const { room } = result;
 
   //moving socket to the room
   socket.join(roomId);
-
-  // adding new user to all user array
-  connectedUsers.push(newUser);
 
   // emit to room to prepare for webRTC connection
   const data = { connUserSocketId: socket.id };
@@ -139,25 +130,18 @@ const joinRoomHandler = (roomId, identity, socket) => {
 }
 
 const disconnectHandler = (socket) => {
-  // find if user has been registered.
-  const user = connectedUsers.find(user => user.socketId === socket.id);
-  if (user) {
-    const users = connectedUsers.filter((user) => user.socketId !== socket.id);
-    connectedUsers = users;
+  const result = roomsStore.disconnectUser(store, socket.id);
+  if (result && result.room) {
+    const { room, roomClosed } = result;
 
-    const room = rooms.find(room => room.id === user.roomId);
-    room.connectedUsers = room.connectedUsers.filter(user => user.socketId !== socket.id);
-
-    socket.leave(user.roomId);
+    socket.leave(room.id);
 
     // emit to all users that user disconnected
     io.to(room.id).emit('user-disconnected', { socketId: socket.id });
 
-    // close the room if users left are 0
-    if (room.connectedUsers.length > 0) {
+    // room update, or nothing left to update if the room closed
+    if (!roomClosed) {
       io.to(room.id).emit('room-update', { connectedUsers: room.connectedUsers });
-    } else {
-      rooms = rooms.filter((r) => r.id !== room.id);
     }
   }
   console.log('socket-dc', socket.id);

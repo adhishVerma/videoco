@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  coturn:
+    image: coturn/coturn:4.6
+    container_name: videoco-turn
+    restart: unless-stopped
+    # host networking avoids having to map the whole relay port range one by one
+    network_mode: host
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
+      - ./certs:/etc/coturn/certs:ro
+    command: ["-c", "/etc/coturn/turnserver.conf"]

@@ -13,14 +13,14 @@ const Button = (props) => {
             style = 'bg-red-500 text-skin-btn-primary'
             break;
         case 'icon':
-            style = 'bg-skin-btn-secondary text-skin-btn-secondary !max-w-fit !min-w-0 text-xl !py-2'
+            style = 'bg-skin-btn-secondary text-skin-btn-secondary !max-w-fit !min-w-[44px] !min-h-[44px] flex items-center justify-center text-xl !p-0 rounded-full'
             break;
         default:
             style = 'bg-skin-btn-primary text-skin-btn-primary'
             break;
     }
     return (
-        <button onClick={props.onClick} className={`${style} outline-none text-clip font-medium text-base rounded py-1.5 px-3 self-center min-w-24 max-w-content shadow active:shadow-sm opacity-90 hover:opacity-100`}>{props.children}</button>
+        <button type={props.type} onClick={props.onClick} title={props.title} disabled={props.disabled} className={`${style} outline-none text-clip font-medium text-base rounded py-1.5 px-3 self-center min-w-24 max-w-content shadow active:shadow-sm opacity-90 hover:opacity-100 disabled:opacity-50 disabled:cursor-not-allowed ${props.className || ''}`}>{props.children}</button>
     )
 }
 

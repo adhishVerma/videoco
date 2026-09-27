@@ -20,8 +20,8 @@ const JoinRequest = (props) => {
 
 
   return (
-    <div className='absolute flex justify-center top-0 left-0 right-0 bottom-0'>
-      <div className='flex flex-col mt-56 items-center w-full max-w-md gap-4 p-6'>
+    <div className='absolute flex items-center justify-center top-0 left-0 right-0 bottom-0'>
+      <div className='flex flex-col items-center w-full max-w-md gap-4 p-6'>
         <JoinRoomTitle isRoomHost={isRoomHost} />
         <JoinRoomContent />
       </div>

@@ -3,7 +3,7 @@ import ReactPlayer from "react-player";
 import { FaUserCircle } from "react-icons/fa";
 
 
-export const Video = ({ stream, muted, name }) => {
+export const Video = ({ stream, muted, name, caption }) => {
 
     const handleFullScreenStream = (event) => {
         const element = event.target
@@ -28,6 +28,11 @@ export const Video = ({ stream, muted, name }) => {
                     muted={muted}
                     className="absolute top-0 left-0" />
                 <div className="text-white absolute bottom-3 left-3 bg-[rgba(0,0,0,0.29)] p-2 px-3 rounded-md text-base">{name ? name : "guest"}</div>
+                {caption && (
+                    <div className="text-white absolute bottom-3 left-1/2 -translate-x-1/2 max-w-[90%] bg-[rgba(0,0,0,0.55)] px-3 py-1.5 rounded-md text-sm text-center">
+                        {caption}
+                    </div>
+                )}
             </div ></div>
     )
 }

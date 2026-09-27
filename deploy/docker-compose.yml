@@ -1,0 +1,58 @@
+services:
+  app:
+    build:
+      context: ../server
+    container_name: videoco-app
+    restart: unless-stopped
+    env_file:
+      - ../server/.env
+    expose:
+      - "5000"
+    networks:
+      - webnet
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: videoco-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - app
+    networks:
+      - webnet
+
+  certbot:
+    image: certbot/certbot
+    container_name: videoco-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    # renews every 12h; certbot itself no-ops until a cert is within 30
+    # days of expiry, so this is cheap to leave running
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot; sleep 12h & wait $${!}; done;'"
+
+  # self-hosted TURN (coturn) - see ../coturn/README.md for the one-time
+  # turnserver.conf setup. Host networking is required so it can bind the
+  # whole UDP relay port range without mapping each one. TLS cert is the
+  # same one nginx uses (turn.ballasgang.shop is a SAN on the videoco.* cert,
+  # see init-letsencrypt.sh) - coturn reads it directly, it never talks to
+  # nginx.
+  coturn:
+    image: coturn/coturn:4.6
+    container_name: videoco-turn
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ../coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+      - ./certbot/conf:/etc/coturn/certs:ro
+    command: ["-c", "/etc/coturn/turnserver.conf"]
+
+networks:
+  webnet:
+    driver: bridge

@@ -33,8 +33,8 @@ const Connect = ({ setIsRoomHostAction }) => {
 
 
   return (
-    <div className="flex px-2 h-screen justify-center">
-      <div className="max-w-md w-full  mt-56 p-6 bg-white">
+    <div className="flex px-2 h-screen items-center justify-center">
+      <div className="max-w-md w-full p-6 bg-white">
         <div className="text-2xl font-semibold text-slate-700 mb-12 text-center">Create a room</div>
         <div className="flex flex-col gap-6">
           <Button variant='primary' onClick={pushToJoinRoomPage}>Join</Button>
