@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const { getIce } = require("./controllers/getIce");
 const { getAttachmentsStatus, getUploadUrl } = require("./controllers/attachments");
-const { getLiveKitStatus, createGetTokenHandler } = require("./controllers/livekit");
+const { getLiveKitStatus, createGetTokenHandler, removeLiveKitParticipant } = require("./controllers/livekit");
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const roomsStore = require('./rooms');
@@ -87,6 +87,13 @@ io.on('connection', socket => {
     socket.broadcast.to(roomId).emit('receive-caption', { text, socketId: socket.id });
   });
 
+  // host-only moderation - see removeParticipantHandler for the actual
+  // authorization check, which is against the server's own room record,
+  // never the requesting client's self-reported isRoomHost flag.
+  socket.on('remove-participant', (data) => {
+    removeParticipantHandler(data, socket);
+  });
+
   // user disconnect
   socket.on('disconnect', () => {
     disconnectHandler(socket);
@@ -128,6 +135,28 @@ const joinRoomHandler = async (roomId, identity, socket, password) => {
   io.to(roomId).emit('room-update', { connectedUsers: room.connectedUsers });
 
 }
+
+// Force-disconnecting the target's own socket (rather than manually
+// tearing down room membership here) reuses that socket's own
+// disconnectHandler - registered when it first connected - so a removal
+// broadcasts the exact same user-disconnected/room-update events a normal
+// leave does, and the room-closes-when-empty logic still applies.
+const removeParticipantHandler = (data, socket) => {
+  const { roomId, targetSocketId } = data || {};
+  if (!roomId || !targetSocketId || targetSocketId === socket.id) return;
+  if (!roomsStore.isRoomHost(store, roomId, socket.id)) return;
+
+  const room = store.rooms.find((r) => r.id === roomId);
+  const isMember = room?.connectedUsers.some((u) => u.socketId === targetSocketId);
+  if (!isMember) return;
+
+  const targetSocket = io.sockets.sockets.get(targetSocketId);
+  if (!targetSocket) return;
+
+  targetSocket.emit('removed-from-room');
+  removeLiveKitParticipant(roomId, targetSocketId);
+  targetSocket.disconnect(true);
+};
 
 const disconnectHandler = (socket) => {
   const result = roomsStore.disconnectUser(store, socket.id);

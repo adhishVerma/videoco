@@ -38,14 +38,21 @@ const Room = ({ roomId, identity, isRoomHost, connectOnlyAudio, roomPassword }) 
       toast.error('Could not connect to the call server. Check your connection and try again.', { position: "bottom-right" });
     }
 
+    const handleRemovedFromRoom = () => {
+      toast.error('The host removed you from the room', { position: "bottom-right" });
+      navigate('/');
+    }
+
     window.addEventListener('join-error', handleJoinError);
     window.addEventListener('media-access-error', handleMediaAccessError);
     window.addEventListener('call-connection-error', handleCallConnectionError);
+    window.addEventListener('removed-from-room', handleRemovedFromRoom);
 
     return () => {
       window.removeEventListener('join-error', handleJoinError);
       window.removeEventListener('media-access-error', handleMediaAccessError);
       window.removeEventListener('call-connection-error', handleCallConnectionError);
+      window.removeEventListener('removed-from-room', handleRemovedFromRoom);
     }
     // eslint-disable-next-line
   }, []);

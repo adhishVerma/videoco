@@ -146,4 +146,47 @@ describe('livekit', () => {
       expect(res.status).toHaveBeenCalledWith(200);
     });
   });
+
+  describe('removeLiveKitParticipant', () => {
+    it('does nothing when LiveKit is not configured', async () => {
+      const { removeLiveKitParticipant } = require('./livekit');
+
+      await expect(removeLiveKitParticipant('room-1', 'socket-2')).resolves.toBeUndefined();
+    });
+
+    it('calls RoomServiceClient.removeParticipant with the room and participant identity', async () => {
+      process.env.LIVEKIT_API_KEY = 'key';
+      process.env.LIVEKIT_API_SECRET = 'secret';
+      process.env.LIVEKIT_URL = 'wss://example.livekit.cloud';
+
+      const removeParticipant = jest.fn().mockResolvedValue(undefined);
+      jest.doMock('livekit-server-sdk', () => ({
+        AccessToken: jest.requireActual('livekit-server-sdk').AccessToken,
+        RoomServiceClient: jest.fn().mockImplementation(() => ({ removeParticipant })),
+      }));
+
+      const { removeLiveKitParticipant } = require('./livekit');
+      await removeLiveKitParticipant('room-1', 'socket-2');
+
+      expect(removeParticipant).toHaveBeenCalledWith('room-1', 'socket-2');
+    });
+
+    it('swallows an error from LiveKit instead of throwing', async () => {
+      process.env.LIVEKIT_API_KEY = 'key';
+      process.env.LIVEKIT_API_SECRET = 'secret';
+      process.env.LIVEKIT_URL = 'wss://example.livekit.cloud';
+
+      jest.doMock('livekit-server-sdk', () => ({
+        AccessToken: jest.requireActual('livekit-server-sdk').AccessToken,
+        RoomServiceClient: jest.fn().mockImplementation(() => ({
+          removeParticipant: jest.fn().mockRejectedValue(new Error('not found')),
+        })),
+      }));
+      jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      const { removeLiveKitParticipant } = require('./livekit');
+
+      await expect(removeLiveKitParticipant('room-1', 'socket-2')).resolves.toBeUndefined();
+    });
+  });
 });

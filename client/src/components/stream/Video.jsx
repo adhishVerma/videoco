@@ -1,9 +1,9 @@
 import React from 'react'
 import ReactPlayer from "react-player";
-import { FaUserCircle } from "react-icons/fa";
+import { FaUserCircle, FaUserSlash } from "react-icons/fa";
 
 
-export const Video = ({ stream, muted, name, caption }) => {
+export const Video = ({ stream, muted, name, caption, onRemove }) => {
 
     const handleFullScreenStream = (event) => {
         const element = event.target
@@ -32,6 +32,16 @@ export const Video = ({ stream, muted, name, caption }) => {
                     <div className="text-white absolute bottom-3 left-1/2 -translate-x-1/2 max-w-[90%] bg-[rgba(0,0,0,0.55)] px-3 py-1.5 rounded-md text-sm text-center">
                         {caption}
                     </div>
+                )}
+                {onRemove && (
+                    <button
+                        type='button'
+                        title='Remove from call'
+                        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+                        className='pointer-events-auto text-white absolute top-3 right-3 bg-[rgba(0,0,0,0.45)] hover:bg-red-600/80 transition-colors p-2 rounded-md'
+                    >
+                        <FaUserSlash />
+                    </button>
                 )}
             </div ></div>
     )

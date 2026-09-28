@@ -3,6 +3,7 @@ const {
   getRoomStatus,
   createRoom,
   joinRoom,
+  isRoomHost,
   disconnectUser,
 } = require('./rooms');
 
@@ -69,6 +70,33 @@ describe('rooms store', () => {
 
   it('does nothing when disconnecting a socket that was never connected', () => {
     expect(disconnectUser(store, 'unknown-socket')).toBeNull();
+  });
+
+  describe('isRoomHost', () => {
+    it('is true for the socket that created the room', async () => {
+      const { roomId } = await createRoom(store, 'host', 'socket-1');
+
+      expect(isRoomHost(store, roomId, 'socket-1')).toBe(true);
+    });
+
+    it('is false for a guest who joined afterwards', async () => {
+      const { roomId } = await createRoom(store, 'host', 'socket-1');
+      await joinRoom(store, roomId, 'guest', 'socket-2');
+
+      expect(isRoomHost(store, roomId, 'socket-2')).toBe(false);
+    });
+
+    it('is false for a room that does not exist', () => {
+      expect(isRoomHost(store, 'no-such-room', 'socket-1')).toBe(false);
+    });
+
+    it('migrates to the next-oldest participant once the host disconnects', async () => {
+      const { roomId } = await createRoom(store, 'host', 'socket-1');
+      await joinRoom(store, roomId, 'guest', 'socket-2');
+      disconnectUser(store, 'socket-1');
+
+      expect(isRoomHost(store, roomId, 'socket-2')).toBe(true);
+    });
   });
 
   describe('password-protected rooms', () => {
