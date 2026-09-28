@@ -1,12 +1,12 @@
 import React, { useEffect } from "react";
 import { connect } from "react-redux";
 import { useMedia } from "../../context/MediaStreamContext";
-import { socket } from "../../utils/wss";
+import { socket, removeParticipant } from "../../utils/wss";
 import Footer from "./Footer";
 import { Video } from "./Video";
 
 
-const Stream = ({ chatToggle, identity, participants }) => {
+const Stream = ({ chatToggle, identity, participants, isRoomHost }) => {
   const { mute, localStream, setLocalStream, remoteStreams, setRemoteStreams, captions } = useMedia();
 
   const getParticipantName = (participantSocketId) => {
@@ -62,7 +62,17 @@ const Stream = ({ chatToggle, identity, participants }) => {
     <div className="h-full w-full">
       <div className={`grid grid-cols-1 sm:grid-cols-${gridColsCount} gap-2 h-full w-full relative items-center justify-center bg-skin-secondary px-2 overflow-y-auto`}>
         {remoteStreams.map(r => {
-          return <div className="h-full w-full max-h-96" key={r.id} ><Video stream={r.stream} muted={mute} caption={captions[r.id]} name={getParticipantName(r.id)} /></div>
+          return (
+            <div className="h-full w-full max-h-96" key={r.id}>
+              <Video
+                stream={r.stream}
+                muted={mute}
+                caption={captions[r.id]}
+                name={getParticipantName(r.id)}
+                onRemove={isRoomHost ? () => removeParticipant(r.id) : undefined}
+              />
+            </div>
+          )
         })}
         <div className="h-full w-full max-h-96 rounded" ><Video stream={localStream} muted={true} name={identity || 'You'} caption={captions[socket.id]} /></div>
       </div>
@@ -75,6 +85,7 @@ const mapStoreStateToProps = (state) => {
   return {
     identity: state.identity,
     participants: state.participants,
+    isRoomHost: state.isRoomHost,
   }
 }
 

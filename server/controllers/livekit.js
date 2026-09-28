@@ -1,4 +1,4 @@
-const { AccessToken } = require('livekit-server-sdk');
+const { AccessToken, RoomServiceClient } = require('livekit-server-sdk');
 
 const TOKEN_TTL = '10m';
 
@@ -64,8 +64,27 @@ const createGetTokenHandler = (roomsStore, store) => async (req, res) => {
     }
 };
 
+// Socket-level disconnect (see index.js's remove-participant handler)
+// already drops the target from the mesh/UI, but LiveKit keeps publishing
+// their media through the SFU independently of that socket - this is what
+// actually stops their stream when a host removes someone mid-call.
+// identity is the LiveKit participant identity, which the token handler
+// above sets to the socket id, so callers pass the same socketId here.
+const removeLiveKitParticipant = async (roomId, identity) => {
+    if (!isLiveKitConfigured()) return;
+    try {
+        const client = new RoomServiceClient(process.env.LIVEKIT_URL, process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET);
+        await client.removeParticipant(roomId, identity);
+    } catch (err) {
+        // participant may have already left, or never actually published to
+        // LiveKit (e.g. still on the mesh fallback) - not fatal either way.
+        console.error('failed to remove LiveKit participant', err);
+    }
+};
+
 module.exports = {
     isLiveKitConfigured,
     getLiveKitStatus,
     createGetTokenHandler,
+    removeLiveKitParticipant,
 };

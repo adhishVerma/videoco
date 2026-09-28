@@ -59,6 +59,10 @@ export const connectWithSocketIOServer = () => {
         const event = new CustomEvent('join-error', { detail: data });
         window.dispatchEvent(event);
     })
+
+    socket.on('removed-from-room', () => {
+        window.dispatchEvent(new CustomEvent('removed-from-room'));
+    })
 }
 
 export const createNewRoom = (identity, password) => {
@@ -87,6 +91,15 @@ export const sendCaption = (text) => {
     const { roomId } = store.getState();
     if (!roomId) return;
     socket.emit('send-caption', { roomId, text });
+}
+
+// server-side validated against the room's actual creator (see
+// rooms.js#isRoomHost) - the UI only using this for isRoomHost participants
+// is a convenience, not the actual security boundary.
+export const removeParticipant = (targetSocketId) => {
+    const { roomId } = store.getState();
+    if (!roomId) return;
+    socket.emit('remove-participant', { roomId, targetSocketId });
 }
 
 export {socket}

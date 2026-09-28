@@ -86,6 +86,16 @@ const joinRoom = async (store, roomId, identity, socketId, password) => {
   return { user: newUser, room };
 };
 
+// The room creator is always connectedUsers[0] (createRoom seeds it there
+// and joinRoom only ever appends) - reused as the sole source of truth for
+// "who is allowed to remove a participant" so a moderation request can be
+// checked against the server's own membership record, never the client's
+// self-reported isRoomHost flag.
+const isRoomHost = (store, roomId, socketId) => {
+  const room = store.rooms.find((room) => room.id === roomId);
+  return !!room && room.connectedUsers[0]?.socketId === socketId;
+};
+
 const disconnectUser = (store, socketId) => {
   const user = store.connectedUsers.find((user) => user.socketId === socketId);
   if (!user) {
@@ -116,5 +126,6 @@ module.exports = {
   checkRoomAccess,
   createRoom,
   joinRoom,
+  isRoomHost,
   disconnectUser,
 };
