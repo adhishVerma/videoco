@@ -12,6 +12,8 @@ A browser-based video calling app - create a room, share the link, and talk. No 
 - In-call chat with file attachments (images, video, audio, PDFs get inline previews; everything else gets a download card)
 - Password-protected rooms
 - Host moderation - the room creator can remove a participant mid-call
+- Invite links (`/join-room?room=<id>`) so a guest only has to type a name
+- Empty-room timeout: a room left with one person ends itself (with a warning and a "keep open" button), so an abandoned call doesn't keep running up media-server usage
 
 ## Architecture
 
@@ -39,6 +41,10 @@ A browser-based video calling app - create a room, share the link, and talk. No 
 - **WebRTC mesh fallback** (nothing configured) - browsers connect directly to each other via `simple-peer`. Works with zero external services, degrades past ~4 participants.
 
 The client checks `/api/livekit-status` once on connect and picks a transport. Everything above that layer (`Stream.jsx`, `Video.jsx`, the chat, captions) talks to a small set of `window` CustomEvents (`catch-local-stream`, `catch-remote-stream`, `remove-remote-stream`) and doesn't know or care which transport is active.
+
+**Join flow and failure handling.** The call flow is ordered so the user's own camera preview appears the moment the camera is granted, *before* any network step (room join, token, media-server connection). Every one of those steps has a timeout and is cancellable (a per-attempt session id is re-checked after each `await`, so leaving or retrying mid-connect can never leave a zombie connection behind), and progress or failure is shown in the UI with Retry and Leave actions. Opening `/room` directly or reloading it - where there's no in-memory session to join with - redirects home instead of waiting forever.
+
+**Rooms end cleanly.** Every way out of a room (Leave, browser back, being removed, an idle timeout, a dropped socket) goes through one server function that frees the seat, notifies the others, kicks the user from LiveKit and, when the room empties, deletes the LiveKit room. LiveKit access tokens are minted over the authenticated socket and bound to the caller's own socket id and the room the server knows they joined, so a client can't request a token as someone else.
 
 **File attachments** upload directly from the browser to a Cloudflare R2 bucket via a server-issued pre-signed URL - file bytes never pass through the app server.
 
@@ -73,7 +79,14 @@ cd server && npm test
 cd client && npm test -- --watchAll=false
 ```
 
+- **Server:** unit tests for the room store and idle scheduler, plus integration tests that start the real server and drive it with real `socket.io-client` connections (create/join/leave, host moderation, chat validation, idle timeout with a short timeout, token binding).
+- **Client:** unit and component tests (Jest + React Testing Library) for the call flow (including stalled-join, cancellation and retry cases against a fake LiveKit), the mesh fallback, the UI components, and the join pages.
+
 CI (`.github/workflows/ci.yml`) runs both suites plus a production client build on every push and PR.
+
+### Tuning the idle timeout
+
+`ROOM_ALONE_TIMEOUT_MS` (default 10 minutes) and `ROOM_ALONE_WARNING_MS` (default 1 minute) control when a one-person room is ended; `0` disables it. See `server/.env.example`.
 
 ## A couple of bugs worth mentioning
 
@@ -83,7 +96,7 @@ CI (`.github/workflows/ci.yml`) runs both suites plus a production client build 
 
 ## Future plans
 
-- Client-side coverage for the video-grid/chat components, not just utils
-- Rate limiting on room creation and a lobby/waiting-room approval step
+- A lobby / waiting-room approval step and rate limiting on room creation
+- Mic-muted indicators on tiles (camera state is already signalled)
 - Recording
 - TypeScript migration
