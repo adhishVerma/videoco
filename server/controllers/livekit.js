@@ -15,76 +15,66 @@ const getLiveKitStatus = (req, res) => {
     });
 };
 
-// roomsStore/store are injected so this stays testable without a running
-// socket server - see server/index.js for the wiring.
-const createGetTokenHandler = (roomsStore, store) => async (req, res) => {
-    if (!isLiveKitConfigured()) {
-        return res.status(501).json({ error: 'LiveKit is not configured on this server' });
-    }
-
-    const { roomId, identity, socketId, password } = req.body || {};
-
-    if (!roomId || !identity || !socketId) {
-        return res.status(400).json({ error: 'roomId, identity and socketId are required' });
-    }
-
-    // re-checks the room's password even though the caller already joined
-    // over the socket - the LiveKit token is a second, independent grant and
-    // shouldn't be handed out to someone who never proved they knew the
-    // password, if the socket layer is ever bypassed.
-    const access = await roomsStore.checkRoomAccess(store, roomId, password);
-    if (access.error) {
-        const status = access.error === 'invalid-password' ? 403 : 404;
-        return res.status(status).json({ error: access.error });
-    }
-
-    try {
-        const at = new AccessToken(process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET, {
-            // identity is the socket id, matching the identity our own
-            // socket.io "participants" list already keys by, so chat/
-            // caption/UI code that looks participants up by socketId keeps
-            // working unchanged against LiveKit's remote participants too.
-            identity: socketId,
-            name: identity,
-            ttl: TOKEN_TTL,
-        });
-        at.addGrant({
-            room: roomId,
-            roomJoin: true,
-            canPublish: true,
-            canSubscribe: true,
-            canPublishData: true,
-        });
-
-        const token = await at.toJwt();
-        return res.status(200).json({ token, url: process.env.LIVEKIT_URL });
-    } catch (err) {
-        console.error('failed to create LiveKit token', err);
-        return res.status(502).json({ error: 'Failed to create LiveKit token' });
-    }
+// Tokens are minted over the authenticated socket connection (see app.js's
+// 'livekit-token' handler), NOT an open HTTP endpoint. That matters: the
+// identity baked into the token must be the caller's real socket id. When
+// the client could claim any socketId over HTTP, a participant could request
+// a token as someone else's identity - and LiveKit kicks the existing holder
+// of a duplicate identity, so that was a way to eject anyone from a call.
+const createAccessToken = async ({ roomId, identity, name }) => {
+    const at = new AccessToken(process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET, {
+        identity,
+        name,
+        ttl: TOKEN_TTL,
+    });
+    at.addGrant({
+        room: roomId,
+        roomJoin: true,
+        canPublish: true,
+        canSubscribe: true,
+        canPublishData: true,
+    });
+    return at.toJwt();
 };
 
-// Socket-level disconnect (see index.js's remove-participant handler)
-// already drops the target from the mesh/UI, but LiveKit keeps publishing
-// their media through the SFU independently of that socket - this is what
-// actually stops their stream when a host removes someone mid-call.
-// identity is the LiveKit participant identity, which the token handler
-// above sets to the socket id, so callers pass the same socketId here.
+const getRoomService = () => {
+    return new RoomServiceClient(process.env.LIVEKIT_URL, process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET);
+};
+
+const isNotFound = (err) => {
+    return err && (err.status === 404 || err.code === 'not_found' || /not.?found|does not exist/i.test(err.message || ''));
+};
+
+// Socket-level disconnect already drops the target from the UI, but LiveKit
+// keeps publishing their media through the SFU independently of that socket -
+// this is what actually stops their stream (and their billing) when a host
+// removes someone, or their socket dies. identity is the socket id.
 const removeLiveKitParticipant = async (roomId, identity) => {
     if (!isLiveKitConfigured()) return;
     try {
-        const client = new RoomServiceClient(process.env.LIVEKIT_URL, process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET);
-        await client.removeParticipant(roomId, identity);
+        await getRoomService().removeParticipant(roomId, identity);
     } catch (err) {
-        // participant may have already left, or never actually published to
-        // LiveKit (e.g. still on the mesh fallback) - not fatal either way.
-        console.error('failed to remove LiveKit participant', err);
+        // "participant not found" is the normal case (they already left);
+        // anything else is worth a log but never fatal to the caller.
+        if (!isNotFound(err)) console.error('failed to remove LiveKit participant', err);
+    }
+};
+
+// Tears down the SFU room outright once our room closes, instead of waiting
+// out LiveKit's own empty-room timeout, so no lingering session keeps accruing.
+const deleteLiveKitRoom = async (roomId) => {
+    if (!isLiveKitConfigured()) return;
+    try {
+        await getRoomService().deleteRoom(roomId);
+    } catch (err) {
+        if (!isNotFound(err)) console.error('failed to delete LiveKit room', err);
     }
 };
 
 module.exports = {
     isLiveKitConfigured,
     getLiveKitStatus,
-    createGetTokenHandler,
+    createAccessToken,
     removeLiveKitParticipant,
+    deleteLiveKitRoom,
 };

@@ -14,7 +14,8 @@
   "license": "ISC",
   "devDependencies": {
     "jest": "^29.7.0",
-    "nodemon": "^2.0.20"
+    "nodemon": "^2.0.20",
+    "socket.io-client": "^4.8.4"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.658.1",

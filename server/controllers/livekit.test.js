@@ -1,4 +1,8 @@
-const { createStore, createRoom } = require('../rooms');
+const configure = () => {
+  process.env.LIVEKIT_API_KEY = 'key';
+  process.env.LIVEKIT_API_SECRET = 'secret';
+  process.env.LIVEKIT_URL = 'wss://example.livekit.cloud';
+};
 
 const makeRes = () => {
   const res = {};
@@ -6,6 +10,8 @@ const makeRes = () => {
   res.json = jest.fn().mockReturnValue(res);
   return res;
 };
+
+const decodeJwt = (token) => JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString());
 
 describe('livekit', () => {
   const originalEnv = process.env;
@@ -16,6 +22,10 @@ describe('livekit', () => {
     delete process.env.LIVEKIT_API_KEY;
     delete process.env.LIVEKIT_API_SECRET;
     delete process.env.LIVEKIT_URL;
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   afterAll(() => {
@@ -33,10 +43,7 @@ describe('livekit', () => {
     });
 
     it('reports enabled with the configured URL once all env vars are set', () => {
-      process.env.LIVEKIT_API_KEY = 'key';
-      process.env.LIVEKIT_API_SECRET = 'secret';
-      process.env.LIVEKIT_URL = 'wss://example.livekit.cloud';
-
+      configure();
       const { getLiveKitStatus } = require('./livekit');
       const res = makeRes();
 
@@ -46,104 +53,27 @@ describe('livekit', () => {
     });
   });
 
-  describe('createGetTokenHandler', () => {
-    it('returns 501 when LiveKit is not configured', async () => {
-      const { createGetTokenHandler } = require('./livekit');
-      const roomsStore = require('../rooms');
-      const store = roomsStore.createStore();
-      const handler = createGetTokenHandler(roomsStore, store);
-      const res = makeRes();
+  describe('createAccessToken', () => {
+    it('mints a JWT bound to the given room and identity', async () => {
+      configure();
+      const { createAccessToken } = require('./livekit');
 
-      await handler({ body: { roomId: 'r1', identity: 'alice', socketId: 's1' } }, res);
+      const token = await createAccessToken({ roomId: 'room-1', identity: 'socket-9', name: 'Alice' });
 
-      expect(res.status).toHaveBeenCalledWith(501);
+      expect(token.split('.')).toHaveLength(3);
+      const claims = decodeJwt(token);
+      expect(claims.sub).toBe('socket-9');
+      expect(claims.name).toBe('Alice');
+      expect(claims.video).toMatchObject({ room: 'room-1', roomJoin: true, canPublish: true, canSubscribe: true });
     });
 
-    it('validates required fields once configured', async () => {
-      process.env.LIVEKIT_API_KEY = 'key';
-      process.env.LIVEKIT_API_SECRET = 'secret';
-      process.env.LIVEKIT_URL = 'wss://example.livekit.cloud';
+    it('expires quickly - it is only needed to join, not to stay', async () => {
+      configure();
+      const { createAccessToken } = require('./livekit');
 
-      const { createGetTokenHandler } = require('./livekit');
-      const roomsStore = require('../rooms');
-      const store = roomsStore.createStore();
-      const handler = createGetTokenHandler(roomsStore, store);
-      const res = makeRes();
+      const claims = decodeJwt(await createAccessToken({ roomId: 'r', identity: 'i', name: 'n' }));
 
-      await handler({ body: {} }, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-    });
-
-    it('rejects a token request for a room that does not exist', async () => {
-      process.env.LIVEKIT_API_KEY = 'key';
-      process.env.LIVEKIT_API_SECRET = 'secret';
-      process.env.LIVEKIT_URL = 'wss://example.livekit.cloud';
-
-      const { createGetTokenHandler } = require('./livekit');
-      const roomsStore = require('../rooms');
-      const store = roomsStore.createStore();
-      const handler = createGetTokenHandler(roomsStore, store);
-      const res = makeRes();
-
-      await handler({ body: { roomId: 'missing', identity: 'alice', socketId: 's1' } }, res);
-
-      expect(res.status).toHaveBeenCalledWith(404);
-    });
-
-    it('rejects a wrong password for a protected room', async () => {
-      process.env.LIVEKIT_API_KEY = 'key';
-      process.env.LIVEKIT_API_SECRET = 'secret';
-      process.env.LIVEKIT_URL = 'wss://example.livekit.cloud';
-
-      const { createGetTokenHandler } = require('./livekit');
-      const roomsStore = require('../rooms');
-      const store = roomsStore.createStore();
-      const { roomId } = await createRoom(store, 'host', 'socket-1', 'letmein');
-      const handler = createGetTokenHandler(roomsStore, store);
-      const res = makeRes();
-
-      await handler({ body: { roomId, identity: 'guest', socketId: 's2', password: 'wrong' } }, res);
-
-      expect(res.status).toHaveBeenCalledWith(403);
-    });
-
-    it('issues a token for a valid room and correct password', async () => {
-      process.env.LIVEKIT_API_KEY = 'key';
-      process.env.LIVEKIT_API_SECRET = 'secret';
-      process.env.LIVEKIT_URL = 'wss://example.livekit.cloud';
-
-      const { createGetTokenHandler } = require('./livekit');
-      const roomsStore = require('../rooms');
-      const store = roomsStore.createStore();
-      const { roomId } = await createRoom(store, 'host', 'socket-1', 'letmein');
-      const handler = createGetTokenHandler(roomsStore, store);
-      const res = makeRes();
-
-      await handler({ body: { roomId, identity: 'guest', socketId: 's2', password: 'letmein' } }, res);
-
-      expect(res.status).toHaveBeenCalledWith(200);
-      const payload = res.json.mock.calls[0][0];
-      expect(typeof payload.token).toBe('string');
-      expect(payload.token.split('.')).toHaveLength(3); // a JWT
-      expect(payload.url).toBe('wss://example.livekit.cloud');
-    });
-
-    it('issues a token for an unprotected room with no password given', async () => {
-      process.env.LIVEKIT_API_KEY = 'key';
-      process.env.LIVEKIT_API_SECRET = 'secret';
-      process.env.LIVEKIT_URL = 'wss://example.livekit.cloud';
-
-      const { createGetTokenHandler } = require('./livekit');
-      const roomsStore = require('../rooms');
-      const store = roomsStore.createStore();
-      const { roomId } = await createRoom(store, 'host', 'socket-1');
-      const handler = createGetTokenHandler(roomsStore, store);
-      const res = makeRes();
-
-      await handler({ body: { roomId, identity: 'guest', socketId: 's2' } }, res);
-
-      expect(res.status).toHaveBeenCalledWith(200);
+      expect(claims.exp - claims.nbf).toBeLessThanOrEqual(10 * 60);
     });
   });
 
@@ -155,10 +85,7 @@ describe('livekit', () => {
     });
 
     it('calls RoomServiceClient.removeParticipant with the room and participant identity', async () => {
-      process.env.LIVEKIT_API_KEY = 'key';
-      process.env.LIVEKIT_API_SECRET = 'secret';
-      process.env.LIVEKIT_URL = 'wss://example.livekit.cloud';
-
+      configure();
       const removeParticipant = jest.fn().mockResolvedValue(undefined);
       jest.doMock('livekit-server-sdk', () => ({
         AccessToken: jest.requireActual('livekit-server-sdk').AccessToken,
@@ -171,22 +98,73 @@ describe('livekit', () => {
       expect(removeParticipant).toHaveBeenCalledWith('room-1', 'socket-2');
     });
 
-    it('swallows an error from LiveKit instead of throwing', async () => {
-      process.env.LIVEKIT_API_KEY = 'key';
-      process.env.LIVEKIT_API_SECRET = 'secret';
-      process.env.LIVEKIT_URL = 'wss://example.livekit.cloud';
-
+    it('swallows an unexpected error and logs it', async () => {
+      configure();
       jest.doMock('livekit-server-sdk', () => ({
         AccessToken: jest.requireActual('livekit-server-sdk').AccessToken,
         RoomServiceClient: jest.fn().mockImplementation(() => ({
-          removeParticipant: jest.fn().mockRejectedValue(new Error('not found')),
+          removeParticipant: jest.fn().mockRejectedValue(new Error('boom')),
         })),
       }));
-      jest.spyOn(console, 'error').mockImplementation(() => {});
+      const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
       const { removeLiveKitParticipant } = require('./livekit');
 
       await expect(removeLiveKitParticipant('room-1', 'socket-2')).resolves.toBeUndefined();
+      expect(errorSpy).toHaveBeenCalled();
+    });
+
+    it('stays quiet when the participant was simply already gone', async () => {
+      configure();
+      jest.doMock('livekit-server-sdk', () => ({
+        AccessToken: jest.requireActual('livekit-server-sdk').AccessToken,
+        RoomServiceClient: jest.fn().mockImplementation(() => ({
+          removeParticipant: jest.fn().mockRejectedValue(Object.assign(new Error('participant does not exist'), { status: 404 })),
+        })),
+      }));
+      const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      const { removeLiveKitParticipant } = require('./livekit');
+      await removeLiveKitParticipant('room-1', 'socket-2');
+
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteLiveKitRoom', () => {
+    it('does nothing when LiveKit is not configured', async () => {
+      const { deleteLiveKitRoom } = require('./livekit');
+
+      await expect(deleteLiveKitRoom('room-1')).resolves.toBeUndefined();
+    });
+
+    it('deletes the SFU room so nothing keeps running after ours closes', async () => {
+      configure();
+      const deleteRoom = jest.fn().mockResolvedValue(undefined);
+      jest.doMock('livekit-server-sdk', () => ({
+        AccessToken: jest.requireActual('livekit-server-sdk').AccessToken,
+        RoomServiceClient: jest.fn().mockImplementation(() => ({ deleteRoom })),
+      }));
+
+      const { deleteLiveKitRoom } = require('./livekit');
+      await deleteLiveKitRoom('room-1');
+
+      expect(deleteRoom).toHaveBeenCalledWith('room-1');
+    });
+
+    it('never throws if LiveKit is unreachable', async () => {
+      configure();
+      jest.doMock('livekit-server-sdk', () => ({
+        AccessToken: jest.requireActual('livekit-server-sdk').AccessToken,
+        RoomServiceClient: jest.fn().mockImplementation(() => ({
+          deleteRoom: jest.fn().mockRejectedValue(new Error('ECONNREFUSED')),
+        })),
+      }));
+      jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      const { deleteLiveKitRoom } = require('./livekit');
+
+      await expect(deleteLiveKitRoom('room-1')).resolves.toBeUndefined();
     });
   });
 });
