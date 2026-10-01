@@ -17,6 +17,14 @@ if (typeof global.MediaStream === 'undefined') {
             return [...this._tracks];
         }
 
+        getVideoTracks() {
+            return this._tracks.filter((t) => t.kind === 'video');
+        }
+
+        getAudioTracks() {
+            return this._tracks.filter((t) => t.kind === 'audio');
+        }
+
         addTrack(track) {
             this._tracks.push(track);
         }

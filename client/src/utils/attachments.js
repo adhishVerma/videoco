@@ -3,6 +3,10 @@ import * as api from './api';
 
 export const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // keep in sync with server/controllers/attachments.js
 
+// A stalled upload would otherwise leave the chat input disabled ("Uploading
+// attachment...") forever. Generous, since 25MB on a slow connection is slow.
+export const UPLOAD_TIMEOUT_MS = 2 * 60 * 1000;
+
 // Uploads a file straight to R2 via a server-issued pre-signed URL - the
 // file bytes never pass through our own server. Returns metadata to attach
 // to a chat message, or throws if attachments aren't configured / upload
@@ -18,8 +22,12 @@ export const uploadAttachment = async (file) => {
     try {
         await axios.put(uploadUrl, file, {
             headers: { 'Content-Type': contentType },
+            timeout: UPLOAD_TIMEOUT_MS,
         });
     } catch (err) {
+        if (err.code === 'ECONNABORTED') {
+            throw new Error('Upload timed out - check your connection and try again');
+        }
         // This PUT goes straight from the browser to R2, not through our
         // server - a response-less "Network Error" here (no err.response,
         // but err.request exists) is the signature of the browser's CORS

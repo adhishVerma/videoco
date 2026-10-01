@@ -5,33 +5,29 @@ import { setIsRoomHost } from '../../store/actions';
 import { JoinRoomTitle } from './JoinRoomTitle';
 import JoinRoomContent from './JoinRoomContent';
 
-const JoinRequest = (props) => {
-  const { setIsRoomHostAction, isRoomHost } = props;
+const JoinRequest = ({ setIsRoomHostAction, isRoomHost }) => {
   const search = useLocation().search;
-  
 
   useEffect(() => {
-    const isRoomHost = new URLSearchParams(search).get('host');
-    if (isRoomHost) {
-      // marking ourself as host in redux store
-      setIsRoomHostAction(true);
-    }
+    // Set it both ways from the URL. It used to only ever switch ON, so
+    // opening an invite link in a tab that had earlier hosted a room would
+    // still behave as a host and create a brand new room instead of joining.
+    setIsRoomHostAction(!!new URLSearchParams(search).get('host'));
   }, [search, setIsRoomHostAction])
 
-
   return (
-    <div className='absolute flex items-center justify-center top-0 left-0 right-0 bottom-0'>
-      <div className='flex flex-col items-center w-full max-w-md gap-4 p-6'>
+    <main className='min-h-screen flex items-center justify-center px-4 pt-20 pb-10 bg-gradient-to-b from-brand-50 to-white'>
+      <div className='w-full max-w-md bg-white rounded-2xl shadow-xl shadow-brand-600/5 border border-slate-200 p-6 sm:p-8 flex flex-col gap-6'>
         <JoinRoomTitle isRoomHost={isRoomHost} />
         <JoinRoomContent />
       </div>
-    </div>
+    </main>
   )
 }
 
 const mapStoreStateToProps = (state) => {
   return {
-    ...state
+    isRoomHost: state.isRoomHost
   }
 }
 

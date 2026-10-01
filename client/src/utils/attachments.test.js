@@ -10,7 +10,7 @@ jest.mock('./api', () => ({
 }));
 
 import axios from 'axios';
-import { uploadAttachment, MAX_FILE_SIZE_BYTES } from './attachments';
+import { uploadAttachment, MAX_FILE_SIZE_BYTES, UPLOAD_TIMEOUT_MS } from './attachments';
 import * as api from './api';
 
 const makeFile = (size, type = 'image/png', name = 'photo.png') => ({
@@ -45,7 +45,7 @@ describe('uploadAttachment', () => {
         expect(axios.put).toHaveBeenCalledWith(
             'https://r2.example.com/signed',
             file,
-            { headers: { 'Content-Type': 'video/mp4' } },
+            { headers: { 'Content-Type': 'video/mp4' }, timeout: UPLOAD_TIMEOUT_MS },
         );
         expect(result).toEqual({
             url: 'https://cdn.example.com/clip.mp4',
@@ -71,6 +71,14 @@ describe('uploadAttachment', () => {
         axios.put.mockRejectedValue({ request: {}, response: undefined });
 
         await expect(uploadAttachment(file)).rejects.toThrow(/CORS policy/i);
+    });
+
+    it('reports a stalled upload as a timeout instead of hanging', async () => {
+        const file = makeFile(1024);
+        api.getUploadUrl.mockResolvedValue({ uploadUrl: 'https://r2.example.com/signed', fileUrl: 'https://cdn.example.com/photo.png' });
+        axios.put.mockRejectedValue({ code: 'ECONNABORTED', request: {} });
+
+        await expect(uploadAttachment(file)).rejects.toThrow(/timed out/i);
     });
 
     it('rethrows an error that has a real server response as-is', async () => {
