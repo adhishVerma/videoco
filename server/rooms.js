@@ -9,6 +9,10 @@ const { promisify } = require('util');
 // one hashing a password. The async form runs off the main thread instead.
 const scrypt = promisify(crypto.scrypt);
 
+// Hard cap enforced here (not just in the client's pre-join check, which is
+// both racy and trivially bypassed). A mesh of 4 is already heavy per-browser.
+const MAX_PARTICIPANTS = 4;
+
 const createStore = () => ({
   connectedUsers: [],
   rooms: [],
@@ -34,13 +38,18 @@ const getRoomStatus = (store, roomId) => {
   }
   return {
     roomExists: true,
-    full: room.connectedUsers.length > 3,
+    full: room.connectedUsers.length >= MAX_PARTICIPANTS,
     passwordProtected: !!room.passwordHash,
   };
 };
 
 const createRoom = async (store, identity, socketId, password) => {
   const roomId = uuidv4();
+  // Hash BEFORE touching the store: the await yields, and a socket that
+  // disconnects during it would otherwise leave a user pushed into the
+  // store with a room that gets created after its disconnect already ran -
+  // an orphan room nobody can ever leave or close.
+  const passwordHash = password ? await hashPassword(password) : null;
   const newUser = { identity, id: uuidv4(), socketId, roomId };
 
   store.connectedUsers.push(newUser);
@@ -48,7 +57,7 @@ const createRoom = async (store, identity, socketId, password) => {
   const newRoom = {
     id: roomId,
     connectedUsers: [newUser],
-    passwordHash: password ? await hashPassword(password) : null,
+    passwordHash,
   };
   store.rooms.push(newRoom);
 
@@ -79,11 +88,39 @@ const joinRoom = async (store, roomId, identity, socketId, password) => {
   }
   const { room } = access;
 
+  if (room.connectedUsers.length >= MAX_PARTICIPANTS) {
+    return { error: 'full' };
+  }
+
   const newUser = { identity, id: uuidv4(), socketId, roomId };
   room.connectedUsers = [...room.connectedUsers, newUser];
   store.connectedUsers.push(newUser);
 
   return { user: newUser, room };
+};
+
+// The room creator is always connectedUsers[0] (createRoom seeds it there
+// and joinRoom only ever appends) - reused as the sole source of truth for
+// "who is allowed to remove a participant" so a moderation request can be
+// checked against the server's own membership record, never the client's
+// self-reported isRoomHost flag.
+const isMember = (store, roomId, socketId) => {
+  const room = store.rooms.find((room) => room.id === roomId);
+  return !!room && room.connectedUsers.some((u) => u.socketId === socketId);
+};
+
+const getUserBySocketId = (store, socketId) => {
+  return store.connectedUsers.find((user) => user.socketId === socketId) || null;
+};
+
+const getRoomUserCount = (store, roomId) => {
+  const room = store.rooms.find((room) => room.id === roomId);
+  return room ? room.connectedUsers.length : 0;
+};
+
+const isRoomHost = (store, roomId, socketId) => {
+  const room = store.rooms.find((room) => room.id === roomId);
+  return !!room && room.connectedUsers[0]?.socketId === socketId;
 };
 
 const disconnectUser = (store, socketId) => {
@@ -116,5 +153,10 @@ module.exports = {
   checkRoomAccess,
   createRoom,
   joinRoom,
+  isRoomHost,
+  isMember,
+  getUserBySocketId,
+  getRoomUserCount,
   disconnectUser,
+  MAX_PARTICIPANTS,
 };

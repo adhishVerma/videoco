@@ -1,26 +1,26 @@
 import React from 'react';
 import Input from '../ui/Input';
 
-export const JoinRoomInputs = (props) => {
-    const {roomIdValue, setRoomIdValue, nameValue, setNameValue, passwordValue, setPasswordValue, isRoomHost} = props;
-
-    const handleRoomIdValueChange = (event) => {
-        setRoomIdValue(event.target.value);
-    }
-
-    const handleNameValueChange = (event) => {
-        setNameValue(event.target.value);
-    }
-
-    const handlePasswordValueChange = (event) => {
-        setPasswordValue(event.target.value);
-    }
-
+export const JoinRoomInputs = ({ roomIdValue, setRoomIdValue, nameValue, setNameValue, passwordValue, setPasswordValue, isRoomHost, showPassword, errors = {} }) => {
   return (
-    <div className='flex flex-col gap-3 w-full'>
-        {!isRoomHost && <Input placeholder={'Enter the roomId'} value={roomIdValue} changeHandler={handleRoomIdValueChange}/>}
-        <Input placeholder={'Enter you name'} value={nameValue} changeHandler={handleNameValueChange}/>
-        <Input type='password' placeholder={isRoomHost ? 'Room password (optional)' : 'Room password (if required)'} value={passwordValue} changeHandler={handlePasswordValueChange}/>
+    <div className='flex flex-col gap-4 w-full'>
+        {!isRoomHost && (
+          <Input label='Room ID' name='roomId' autoComplete='off' placeholder='Paste the room ID' value={roomIdValue} changeHandler={(e) => setRoomIdValue(e.target.value)} error={errors.roomId} />
+        )}
+        <Input label='Your name' name='name' autoComplete='nickname' maxLength={50} autoFocus={isRoomHost || !!roomIdValue} placeholder='How should others see you?' value={nameValue} changeHandler={(e) => setNameValue(e.target.value)} error={errors.name} />
+        {(isRoomHost || showPassword) && (
+          <Input
+            label={isRoomHost ? 'Room password (optional)' : 'Room password'}
+            type='password'
+            name='password'
+            autoComplete='off'
+            maxLength={128}
+            placeholder={isRoomHost ? 'Leave empty for an open room' : 'This room is password protected'}
+            value={passwordValue}
+            changeHandler={(e) => setPasswordValue(e.target.value)}
+            error={errors.password}
+          />
+        )}
     </div>
   )
 }

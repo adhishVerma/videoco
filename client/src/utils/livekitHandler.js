@@ -1,7 +1,10 @@
-import { Room, RoomEvent, createLocalTracks } from 'livekit-client';
 import * as api from './api';
 import * as wss from './wss';
-import { socket } from './wss';
+import { CallConnectionError, JoinRejectedError } from './errors';
+import { SessionCancelled, ensureCurrent, isCurrentSession } from './callSession';
+import { CALL_STATUS, setCallStatus, endCall } from './callStatus';
+import { joinSocketRoom } from './roomJoin';
+import { withTimeout } from './timeout';
 
 // LiveKit replaces the peer-to-peer mesh (webRTCHandler.js) as the media
 // transport once the server reports it's configured - see
@@ -14,8 +17,34 @@ import { socket } from './wss';
 // Stream.jsx, Video.jsx and the rest of the UI don't need to know which
 // transport is active.
 
+export { CallConnectionError };
+
+// livekit-client is the single biggest dependency, and the home and join
+// pages never touch it - load it only once a call actually starts. The call
+// flow kicks this off in parallel with its server check (preloadLiveKit), so
+// it doesn't delay the camera preview.
+let livekitModule = null;
+const loadLiveKit = async () => {
+    if (!livekitModule) livekitModule = await import('livekit-client');
+    return livekitModule;
+};
+export const preloadLiveKit = () => {
+    loadLiveKit().catch(() => {});
+};
+
+export const CONNECT_TIMEOUT_MS = 20000;
+export const PUBLISH_TIMEOUT_MS = 15000;
+
+// LiveKit's Track.Source.ScreenShare - spelled out so this module doesn't
+// need the Track class just for one constant.
+const SCREEN_SHARE_SOURCE = 'screen_share';
+
 let room = null;
 let usingLiveKit = false;
+// Rooms WE chose to disconnect (leaving, retrying, cleaning up a failed
+// attempt). Tracked per room, not as one global flag: a cancelled attempt can
+// still be unwinding while its replacement is already connecting.
+const closedByUs = new WeakSet();
 let remoteStreams = [];
 const remoteMediaStreams = {}; // LiveKit participant identity (== our socket id) -> MediaStream
 
@@ -24,7 +53,7 @@ export const isUsingLiveKit = () => usingLiveKit;
 export const isLiveKitAvailable = async () => {
     try {
         const { enabled } = await api.getLiveKitStatus();
-        return enabled;
+        return !!enabled;
     } catch (err) {
         return false;
     }
@@ -42,12 +71,17 @@ const dispatchLocalStream = (stream) => {
 // time that changes. Skips re-dispatching when nothing actually changed
 // (same track ids + readyStates) so the polling helper below doesn't
 // spam the local preview with identical MediaStream objects every 150ms.
+//
+// A screen share is left out on purpose: it's a second video track, and
+// the self-view tile should keep showing the camera, not flip to the screen.
 let lastLocalTrackSignature = '';
 const refreshLocalStream = () => {
     if (!room) return;
     const tracks = [];
     room.localParticipant.trackPublications.forEach((publication) => {
-        if (publication.track) tracks.push(publication.track.mediaStreamTrack);
+        if (publication.track && publication.source !== SCREEN_SHARE_SOURCE) {
+            tracks.push(publication.track.mediaStreamTrack);
+        }
     });
     const signature = tracks.map((t) => `${t.id}:${t.readyState}`).join(',');
     if (signature === lastLocalTrackSignature) return;
@@ -100,6 +134,21 @@ const upsertRemoteTrack = (participantId, track) => {
     dispatchRemoteStreams();
 };
 
+// A remote participant turning their camera/mic fully off unpublishes the
+// track; leaving its dead MediaStreamTrack in their stream would freeze the
+// last frame (or keep a silent audio track) on everyone else's screen.
+const removeRemoteTrack = (participantId, track) => {
+    const mediaStream = remoteMediaStreams[participantId];
+    if (!mediaStream) return;
+    mediaStream.getTracks()
+        .filter((t) => t === track.mediaStreamTrack)
+        .forEach((t) => mediaStream.removeTrack(t));
+    if (remoteStreams.some((s) => s.id === participantId)) {
+        remoteStreams = [...remoteStreams];
+        dispatchRemoteStreams();
+    }
+};
+
 // A remote participant toggling their camera/mic goes through the same
 // mute/restart mechanism as the local side (see refreshLocalStream) - it
 // fires TrackMuted/TrackUnmuted, not TrackSubscribed/Unsubscribed, so
@@ -119,78 +168,49 @@ const removeRemoteParticipant = (participantId) => {
     dispatchRemoveRemoteStream(participantId);
 };
 
-// resolves once the socket.io room is created/joined, handing back the
-// final roomId (the server generates it for a host) before we ask for a
-// LiveKit token for that same room. Rejects if the join is refused (wrong
-// password, room gone) - Room.jsx's existing join-error listener already
-// shows the toast and navigates away, so this just needs to stop here.
-const waitForRoomReady = (isRoomHost) => new Promise((resolve, reject) => {
-    const cleanup = () => {
-        socket.off('room-id', onRoomId);
-        socket.off('room-update', onRoomUpdate);
-        window.removeEventListener('join-error', onJoinError);
-    };
-    const onRoomId = ({ roomId }) => {
-        if (!isRoomHost) return;
-        cleanup();
-        resolve(roomId);
-    };
-    const onRoomUpdate = () => {
-        if (isRoomHost) return;
-        cleanup();
-        resolve(null);
-    };
-    const onJoinError = () => {
-        cleanup();
-        reject(new Error('join-error'));
-    };
-    socket.on('room-id', onRoomId);
-    socket.on('room-update', onRoomUpdate);
-    window.addEventListener('join-error', onJoinError);
-});
-
-export const startLiveKitFlow = async (isRoomHost, identity, roomId, onlyAudio, roomPassword) => {
-    usingLiveKit = true;
-
-    let resolvedRoomId;
-    try {
-        const roomReadyPromise = waitForRoomReady(isRoomHost);
-        isRoomHost ? wss.createNewRoom(identity, roomPassword) : wss.joinRoom(identity, roomId, roomPassword);
-        const readyResult = await roomReadyPromise;
-        resolvedRoomId = isRoomHost ? readyResult : roomId;
-    } catch (err) {
-        usingLiveKit = false;
-        return;
-    }
-
-    let token, url;
-    try {
-        ({ token, url } = await api.getLiveKitToken(resolvedRoomId, identity, socket.id, roomPassword));
-    } catch (err) {
-        usingLiveKit = false;
-        throw new CallConnectionError('Failed to get a call token from the server', err);
-    }
-
-    room = new Room();
-
-    room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+const registerRoomHandlers = (liveKitRoom, RoomEvent) => {
+    liveKitRoom.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
         upsertRemoteTrack(participant.identity, track);
     });
 
-    room.on(RoomEvent.TrackUnsubscribed, (track) => {
+    liveKitRoom.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
         track.detach();
+        if (participant) removeRemoteTrack(participant.identity, track);
     });
 
-    room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+    liveKitRoom.on(RoomEvent.ParticipantDisconnected, (participant) => {
         removeRemoteParticipant(participant.identity);
     });
 
-    room.on(RoomEvent.Disconnected, () => {
-        usingLiveKit = false;
+    // LiveKit retries a dropped connection on its own first; only a final
+    // Disconnected means the call is actually gone.
+    liveKitRoom.on(RoomEvent.Reconnecting, () => {
+        setCallStatus(CALL_STATUS.RECONNECTING);
     });
 
-    room.on(RoomEvent.LocalTrackPublished, refreshLocalStream);
-    room.on(RoomEvent.LocalTrackUnpublished, refreshLocalStream);
+    liveKitRoom.on(RoomEvent.Reconnected, () => {
+        setCallStatus(CALL_STATUS.CONNECTED);
+    });
+
+    liveKitRoom.on(RoomEvent.Disconnected, () => {
+        // leaving on purpose also lands here - only a drop we didn't cause
+        // should tell the UI the call ended underneath the user
+        if (closedByUs.has(liveKitRoom)) return;
+        if (room === liveKitRoom) {
+            usingLiveKit = false;
+            endCall('media-disconnected');
+        }
+    });
+
+    liveKitRoom.on(RoomEvent.LocalTrackPublished, refreshLocalStream);
+    liveKitRoom.on(RoomEvent.LocalTrackUnpublished, (publication) => {
+        refreshLocalStream();
+        // the browser's own "Stop sharing" button unpublishes the screen
+        // track without going through our toggle - tell the button
+        if (publication && publication.source === SCREEN_SHARE_SOURCE) {
+            window.dispatchEvent(new CustomEvent('screen-share-ended'));
+        }
+    });
 
     // The actual mechanism a camera/mic toggle uses - mute() typically
     // stops the underlying hardware track (turns the camera light off)
@@ -199,75 +219,145 @@ export const startLiveKitFlow = async (isRoomHost, identity, roomId, onlyAudio, 
     // toggle (backing up the explicit refresh in setLiveKitCameraEnabled/
     // setLiveKitMicEnabled below) and, critically, a remote participant's
     // toggle, which nothing else here was listening for at all.
-    room.on(RoomEvent.TrackMuted, (publication, participant) => {
+    liveKitRoom.on(RoomEvent.TrackMuted, (publication, participant) => {
+        if (participant.isLocal) {
+            pollLocalStreamUntilStable();
+        } else if (publication && publication.kind === 'video' && publication.track) {
+            // Take a muted camera out of their stream so the tile switches to
+            // its avatar at once. Waiting for the browser to notice the media
+            // stopped (MediaStreamTrack.muted) takes seconds and shows a frozen
+            // last frame meanwhile. TrackUnmuted puts it back below.
+            removeRemoteTrack(participant.identity, publication.track);
+        } else {
+            refreshRemoteParticipant(participant.identity);
+        }
+    });
+    liveKitRoom.on(RoomEvent.TrackUnmuted, (publication, participant) => {
         participant.isLocal ? pollLocalStreamUntilStable() : refreshRemoteParticipant(participant.identity);
     });
-    room.on(RoomEvent.TrackUnmuted, (publication, participant) => {
-        participant.isLocal ? pollLocalStreamUntilStable() : refreshRemoteParticipant(participant.identity);
-    });
+};
+
+const resetState = () => {
+    remoteStreams = [];
+    Object.keys(remoteMediaStreams).forEach((id) => delete remoteMediaStreams[id]);
+    lastLocalTrackSignature = '';
+};
+
+// Order matters here, and it's deliberately NOT "connect, then open the
+// camera": the user's own preview must appear the instant the camera is
+// granted, regardless of how slow (or broken) the network steps after it
+// are. Previously the preview waited on the room join, the token request and
+// the LiveKit connection, so any of them stalling meant a blank screen with
+// no explanation.
+//
+// `sessionId` (see callSession.js) lets a user who leaves or retries mid-way
+// cancel the flow; every await is followed by a check, and anything already
+// acquired is released.
+export const startLiveKitFlow = async (isRoomHost, identity, roomId, onlyAudio, roomPassword, sessionId) => {
+    usingLiveKit = true;
+    resetState();
+
+    let localTracks = [];
+    let myRoom = null;
+
+    // only report progress for the attempt that's still the live one
+    const status = (value) => {
+        if (isCurrentSession(sessionId)) setCallStatus(value);
+    };
+
+    // Releases only what THIS attempt acquired. If it was cancelled because a
+    // newer attempt took over, the module-level room/usingLiveKit now belong
+    // to that newer attempt and must be left alone.
+    const release = () => {
+        localTracks.forEach((t) => t.stop());
+        localTracks = [];
+        if (myRoom) {
+            closedByUs.add(myRoom);
+            myRoom.disconnect();
+            if (room === myRoom) room = null;
+            myRoom = null;
+        }
+        if (isCurrentSession(sessionId)) usingLiveKit = false;
+    };
 
     try {
-        await room.connect(url, token);
-    } catch (err) {
-        usingLiveKit = false;
-        throw new CallConnectionError('Failed to connect to the LiveKit server', err);
-    }
-
-    // getUserMedia genuinely failing (permission denied, no device, device
-    // busy) only happens here - keep this in its own try/catch so it's the
-    // only path that reports a camera/mic problem to the user. Anything
-    // above this point (token fetch, WebSocket connect) is a connection
-    // problem, not a permissions one, and reports as such instead.
-    let localTracks;
-    try {
+        // 1. camera/mic -> instant preview. getUserMedia failing (permission
+        // denied, no device, device busy) is the only thing reported as a
+        // camera/mic problem, so it throws untouched.
+        status(CALL_STATUS.MEDIA);
+        const { Room, RoomEvent, createLocalTracks } = await loadLiveKit();
+        ensureCurrent(sessionId);
         localTracks = await createLocalTracks({
             audio: true,
             video: onlyAudio ? false : { width: 480, height: 360 },
         });
+        ensureCurrent(sessionId);
+        dispatchLocalStream(new MediaStream(localTracks.map((t) => t.mediaStreamTrack)));
+
+        // 2. enter the room over the control-plane socket
+        status(CALL_STATUS.JOINING);
+        await joinSocketRoom(isRoomHost, identity, roomId, roomPassword);
+        ensureCurrent(sessionId);
+
+        // 3. a token bound to this socket, then the media server
+        const { token, url } = await wss.requestLiveKitToken();
+        ensureCurrent(sessionId);
+
+        status(CALL_STATUS.CONNECTING);
+        myRoom = new Room();
+        room = myRoom;
+        registerRoomHandlers(myRoom, RoomEvent);
+        try {
+            await withTimeout(
+                myRoom.connect(url, token),
+                CONNECT_TIMEOUT_MS,
+                () => new CallConnectionError('Timed out connecting to the media server'),
+            );
+        } catch (err) {
+            // release() disconnects myRoom, which also stops a connect() that
+            // gave up waiting from completing later and leaving a live session
+            throw err instanceof CallConnectionError ? err : new CallConnectionError('Failed to connect to the media server', err);
+        }
+        ensureCurrent(sessionId);
+
+        // 4. publish what we already captured
+        try {
+            for (const track of localTracks) {
+                await withTimeout(
+                    myRoom.localParticipant.publishTrack(track),
+                    PUBLISH_TIMEOUT_MS,
+                    () => new CallConnectionError('Timed out publishing to the call'),
+                );
+                ensureCurrent(sessionId);
+            }
+        } catch (err) {
+            if (err instanceof SessionCancelled) throw err;
+            throw err instanceof CallConnectionError ? err : new CallConnectionError('Failed to publish local tracks to the call', err);
+        }
+
+        // pick up anyone already in the room when we joined
+        myRoom.remoteParticipants.forEach((participant) => {
+            participant.trackPublications.forEach((publication) => {
+                if (publication.track) upsertRemoteTrack(participant.identity, publication.track);
+            });
+        });
+
+        status(CALL_STATUS.CONNECTED);
     } catch (err) {
-        room.disconnect();
-        room = null;
-        usingLiveKit = false;
+        release();
+        // a cancelled session or a refused join isn't a failure to report
+        if (err instanceof SessionCancelled || err instanceof JoinRejectedError) return;
         throw err;
     }
-
-    const localStream = new MediaStream(localTracks.map((t) => t.mediaStreamTrack));
-    dispatchLocalStream(localStream);
-
-    try {
-        for (const track of localTracks) {
-            await room.localParticipant.publishTrack(track);
-        }
-    } catch (err) {
-        usingLiveKit = false;
-        throw new CallConnectionError('Failed to publish local tracks to the call', err);
-    }
-
-    // pick up anyone already in the room when we joined
-    room.remoteParticipants.forEach((participant) => {
-        participant.trackPublications.forEach((publication) => {
-            if (publication.track) upsertRemoteTrack(participant.identity, publication.track);
-        });
-    });
 };
-
-// distinguishes "we couldn't reach/use the call server" from an actual
-// getUserMedia permission/device failure, so the UI can show an accurate
-// message instead of always blaming the camera/mic.
-export class CallConnectionError extends Error {
-    constructor(message, cause) {
-        super(message);
-        this.name = 'CallConnectionError';
-        this.cause = cause;
-    }
-}
 
 export const disconnectLiveKitRoom = () => {
     if (room) {
+        closedByUs.add(room);
         room.disconnect();
         room = null;
     }
-    remoteStreams = [];
+    resetState();
     usingLiveKit = false;
 };
 

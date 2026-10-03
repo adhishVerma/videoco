@@ -1,19 +1,17 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { useMedia } from "../../context/MediaStreamContext";
-import { socket } from "../../utils/wss";
-import Footer from "./Footer";
+import { socket, removeParticipant } from "../../utils/wss";
+import { CALL_STATUS } from "../../utils/callStatus";
 import { Video } from "./Video";
 
+const LOCAL_ID = 'local';
 
-const Stream = ({ chatToggle, identity, participants }) => {
-  const { mute, localStream, setLocalStream, remoteStreams, setRemoteStreams, captions } = useMedia();
-
-  const getParticipantName = (participantSocketId) => {
-    const participant = participants.find((p) => p.socketId === participantSocketId);
-    return participant ? participant.identity : undefined;
-  };
-
+const Stream = ({ identity, participants, isRoomHost }) => {
+  const { mute, localStream, setLocalStream, remoteStreams, setRemoteStreams, captions, callStatus } = useMedia();
+  const [expandedId, setExpandedId] = useState(null);
+  // socket id -> true when that person has told us their camera is off
+  const [cameraOff, setCameraOff] = useState({});
 
   useEffect(() => {
     const handleLocalStream = (event) => {
@@ -24,49 +22,102 @@ const Stream = ({ chatToggle, identity, participants }) => {
       setRemoteStreams(event.detail.streams);
     }
 
+    // Functional update, and no assumption the peer ever had a stream: this
+    // used to look the stream up in a closed-over array and read .stream off
+    // the result, which threw (and blanked the whole page) for a participant
+    // who left before their video had arrived.
     const handleRemoveRemoteStream = (event) => {
       const { socketId } = event.detail;
-      const streamObj = remoteStreams.find(stream => stream.id === socketId);
-      const stream = streamObj.stream;
-      const tracks = stream.getTracks();
-      tracks.forEach(t => t.stop());
-      const updatedStreams = remoteStreams.filter((stream) => stream.id !== socketId);
-      setRemoteStreams([...updatedStreams]);
+      setRemoteStreams((current) => current.filter((stream) => stream.id !== socketId));
+      setExpandedId((current) => (current === socketId ? null : current));
+      setCameraOff((current) => {
+        if (!(socketId in current)) return current;
+        const { [socketId]: removed, ...rest } = current;
+        return rest;
+      });
+    }
+
+    const handleRemoteMediaState = (event) => {
+      const { socketId, video } = event.detail || {};
+      if (!socketId) return;
+      setCameraOff((current) => ({ ...current, [socketId]: !video }));
     }
 
     window.addEventListener('remove-remote-stream', handleRemoveRemoteStream)
+    window.addEventListener('remote-media-state', handleRemoteMediaState);
     window.addEventListener('catch-local-stream', handleLocalStream);
     window.addEventListener('catch-remote-stream', handleRemoteStreams);
 
     return () => {
       window.removeEventListener('remove-remote-stream', handleRemoveRemoteStream)
+      window.removeEventListener('remote-media-state', handleRemoteMediaState);
       window.removeEventListener('catch-local-stream', handleLocalStream);
       window.removeEventListener('catch-remote-stream', handleRemoteStreams);
     }
-  }, [remoteStreams, setLocalStream, setRemoteStreams])
+  }, [setLocalStream, setRemoteStreams])
 
-  // grid needs a column count for the whole tile count (remote streams + the
-  // local tile below), not just the remote count, and it must be a whole
-  // number - "grid-cols-1.41..." isn't a real Tailwind class and silently
-  // does nothing, leaving the grid uncolumned for 3+ participants.
-  const totalTiles = remoteStreams.length + 1;
-  const gridColsCount = Math.min(4, Math.max(1, Math.ceil(Math.sqrt(totalTiles))));
+  const tiles = useMemo(() => {
+    const nameOf = (socketId) => {
+      const participant = participants.find((p) => p.socketId === socketId);
+      return participant ? participant.identity : undefined;
+    };
+    return [
+      ...remoteStreams.map((r) => ({ id: r.id, stream: r.stream, name: nameOf(r.id), isLocal: false })),
+      { id: LOCAL_ID, stream: localStream, name: identity || 'You', isLocal: true },
+    ];
+  }, [remoteStreams, localStream, participants, identity]);
 
-  // eslint-disable-next-line
-  let gridOptions = [
-    "grid-cols-1", "grid-cols-2", "grid-cols-3", "grid-cols-4",
-    "sm:grid-cols-1", "sm:grid-cols-2", "sm:grid-cols-3", "sm:grid-cols-4"
-  ]
+  const toggleExpand = (id) => setExpandedId((current) => (current === id ? null : id));
+
+  const renderTile = (tile) => (
+    <Video
+      key={tile.id}
+      stream={tile.stream}
+      // your own tile is always muted - hearing yourself is an echo
+      muted={tile.isLocal ? true : mute}
+      name={tile.name}
+      isLocal={tile.isLocal}
+      cameraOff={!tile.isLocal && !!cameraOff[tile.id]}
+      caption={captions[tile.isLocal ? socket && socket.id : tile.id]}
+      expanded={expandedId === tile.id}
+      onToggleExpand={tiles.length > 1 ? () => toggleExpand(tile.id) : undefined}
+      onRemove={isRoomHost && !tile.isLocal ? () => removeParticipant(tile.id) : undefined}
+    />
+  );
+
+  const expanded = tiles.find((t) => t.id === expandedId);
+  const alone = remoteStreams.length === 0 && callStatus.status === CALL_STATUS.CONNECTED;
+
+  if (expanded) {
+    const others = tiles.filter((t) => t.id !== expanded.id);
+    return (
+      <div className="flex flex-col lg:flex-row gap-3 h-full w-full p-3">
+        <div className="flex-1 min-h-0">{renderTile(expanded)}</div>
+        <div className="flex lg:flex-col gap-3 h-28 lg:h-auto lg:w-60 overflow-auto shrink-0">
+          {others.map((tile) => (
+            <div key={tile.id} className="aspect-video h-full lg:h-auto lg:w-full shrink-0">{renderTile(tile)}</div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const columns = tiles.length === 1
+    ? 'grid-cols-1 max-w-4xl'
+    : 'grid-cols-1 sm:grid-cols-2 max-w-6xl';
 
   return (
-    <div className="h-full w-full">
-      <div className={`grid grid-cols-1 sm:grid-cols-${gridColsCount} gap-2 h-full w-full relative items-center justify-center bg-skin-secondary px-2 overflow-y-auto`}>
-        {remoteStreams.map(r => {
-          return <div className="h-full w-full max-h-96" key={r.id} ><Video stream={r.stream} muted={mute} caption={captions[r.id]} name={getParticipantName(r.id)} /></div>
-        })}
-        <div className="h-full w-full max-h-96 rounded" ><Video stream={localStream} muted={true} name={identity || 'You'} caption={captions[socket.id]} /></div>
+    <div className="h-full w-full overflow-y-auto p-3 flex flex-col items-center justify-center">
+      <div className={`grid ${columns} gap-3 w-full`}>
+        {tiles.map((tile) => (
+          <div key={tile.id} className="aspect-video w-full max-h-[70vh] justify-self-center">{renderTile(tile)}</div>
+        ))}
       </div>
-      <Footer chatToggle={chatToggle} />
+      {alone && (
+        <p className="mt-4 text-center text-sm text-slate-400">
+          You're the only one here. Copy the invite link from the top bar to bring someone in.
+        </p>
+      )}
     </div>
   );
 };
@@ -75,6 +126,7 @@ const mapStoreStateToProps = (state) => {
   return {
     identity: state.identity,
     participants: state.participants,
+    isRoomHost: state.isRoomHost,
   }
 }
 
